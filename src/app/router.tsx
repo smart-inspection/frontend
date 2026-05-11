@@ -4,8 +4,8 @@ import { DashboardPage } from "@/features/dashboard/pages/dashboard-page"
 import { ReportsPage } from "@/features/reports/pages/reports-page"
 import { EvidencesPage } from "@/features/evidences/pages/evidences-page"
 
-import InspectionsPage from "@/modules/inspections/pages/InspectionsPage"
-import InspectionDetailPage from "@/modules/inspections/pages/InspectionDetailPage"
+import InspectionsPage from "../features/inspections/pages/InspectionsPage"
+import InspectionDetailPage from "../features/inspections/pages/InspectionDetailPage"
 import { InspectionsPage as CreateInspectionPage } from "@/features/inspections/pages/inspections-page"
 
 export const router = createBrowserRouter([
