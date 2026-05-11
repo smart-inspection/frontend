@@ -226,6 +226,28 @@ export default function InspectionDetailPage() {
         }
     }
 
+    const handleCreateVoiceTranscription = async (audioBlob: Blob) => {
+        const audioFile = new File(
+            [audioBlob],
+            `inspection-${inspectionId}-${Date.now()}.webm`,
+            { type: audioBlob.type || "audio/webm" },
+        )
+
+        const createdEvidence = await createEvidenceMutation.mutateAsync({
+            file: audioFile,
+            evidence_category: "audio",
+            caption: "Audio grabado desde micrófono",
+        })
+
+        await createTranscriptionMutation.mutateAsync({
+            inspection_id: inspectionId,
+            evidence_id: createdEvidence.id,
+            source_file_path: createdEvidence.file_path,
+            language: "es",
+            model_name: "base",
+        })
+    }
+
     if (inspectionQuery.isLoading) {
         return (
             <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
@@ -406,6 +428,7 @@ export default function InspectionDetailPage() {
                         }
                         onCreate={handleCreateTranscription}
                         onSave={handleSaveTranscription}
+                        onCreateVoiceTranscription={handleCreateVoiceTranscription}
                     />
                 </TabsContent>
 

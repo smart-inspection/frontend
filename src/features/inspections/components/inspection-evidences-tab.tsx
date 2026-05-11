@@ -19,6 +19,8 @@ import type {
     EvidenceCreateInput,
 } from "@/features/inspections/types/inspections.types"
 
+import { resolveBackendFileUrl } from "@/lib/api"
+
 type InspectionEvidencesTabProps = {
     evidences: Evidence[]
     isUploading: boolean
@@ -130,6 +132,7 @@ export function InspectionEvidencesTab({
             <div className="grid gap-4 lg:grid-cols-2">
                 {evidences.map((evidence) => {
                     const isImage = evidence.file_type?.startsWith("image/")
+                    const fileUrl = resolveBackendFileUrl(evidence.file_url || evidence.file_path)
 
                     return (
                         <Card key={evidence.id} className="border-border/60 shadow-sm">
@@ -154,7 +157,7 @@ export function InspectionEvidencesTab({
                                 {isImage ? (
                                     <div className="overflow-hidden rounded-lg border bg-muted/20">
                                         <img
-                                            src={evidence.file_url}
+                                            src={fileUrl}
                                             alt={evidence.caption || `Evidencia ${evidence.id}`}
                                             className="h-52 w-full object-cover"
                                             loading="lazy"
@@ -219,7 +222,7 @@ export function InspectionEvidencesTab({
 
                                     <Button asChild variant="ghost">
                                         <a
-                                            href={evidence.file_url}
+                                            href={fileUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                         >

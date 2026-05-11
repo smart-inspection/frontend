@@ -19,6 +19,7 @@ import type {
     Transcription,
     TranscriptionCreateInput,
 } from "@/features/inspections/types/inspections.types"
+import {AudioRecorderButton} from "@/features/inspections/components/inspection-audio-recorder";
 
 type InspectionTranscriptionsTabProps = {
     evidences: Evidence[]
@@ -31,6 +32,7 @@ type InspectionTranscriptionsTabProps = {
         payload: Omit<TranscriptionCreateInput, "inspection_id">,
     ) => Promise<void> | void
     onSave: (transcriptionId: number, finalText: string) => Promise<void> | void
+    onCreateVoiceTranscription: (audioBlob: Blob) => Promise<void> | void
 }
 
 export function InspectionTranscriptionsTab({
@@ -42,6 +44,7 @@ export function InspectionTranscriptionsTab({
                                                 updateError,
                                                 onCreate,
                                                 onSave,
+                                                onCreateVoiceTranscription,
                                             }: InspectionTranscriptionsTabProps) {
     const [sourcePath, setSourcePath] = useState("")
     const [language, setLanguage] = useState("es")
@@ -154,6 +157,13 @@ export function InspectionTranscriptionsTab({
                                 {createError}
                             </div>
                         ) : null}
+
+                        <div className="md:col-span-2">
+                            <AudioRecorderButton
+                                disabled={isCreating}
+                                onRecorded={onCreateVoiceTranscription}
+                            />
+                        </div>
 
                         <div className="md:col-span-2 flex justify-end">
                             <Button type="submit" disabled={isCreating || !sourcePath.trim()}>
