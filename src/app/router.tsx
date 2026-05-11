@@ -6,7 +6,7 @@ import { EvidencesPage } from "@/features/evidences/pages/evidences-page"
 
 import InspectionsPage from "../features/inspections/pages/InspectionsPage"
 import InspectionDetailPage from "../features/inspections/pages/InspectionDetailPage"
-import { InspectionsPage as CreateInspectionPage } from "@/features/inspections/pages/inspections-page"
+import { CreateInspectionPage as CreateInspectionPage } from "../features/inspections/pages/CreateInspectionPage"
 
 export const router = createBrowserRouter([
     {
