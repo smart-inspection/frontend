@@ -1,95 +1,172 @@
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
+import { ShieldAlert, ShieldCheck, ShieldQuestion } from "lucide-react"
 
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
-    formatDateTime,
-    getConfidenceLabel,
-    getValidationBadgeVariant,
-    getValidationLabel,
-} from "@/features/inspections/utils/inspection-detail.utils"
-import type { InspectionField } from "@/features/inspections/types/inspections.types"
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+
+import type {
+    InspectionField,
+    OcrValidationResponse,
+} from "@/features/inspections/types/inspections.types"
 
 type InspectionFieldsTabProps = {
     fields: InspectionField[]
+    validation: OcrValidationResponse | null
+    isValidating: boolean
+    onValidate: () => void
 }
 
-export function InspectionFieldsTab({ fields }: InspectionFieldsTabProps) {
-    if (fields.length === 0) {
+function getValidationBadgeVariant(status: string) {
+    switch (status?.toLowerCase()) {
+        case "matched":
+            return "default"
+        case "mismatch":
+            return "destructive"
+        case "notfound":
+            return "outline"
+        default:
+            return "secondary"
+    }
+}
+
+export function InspectionFieldsTab({
+                                        fields,
+                                        validation,
+                                        isValidating,
+                                        onValidate,
+                                    }: InspectionFieldsTabProps) {
+    const matched =
+        validation?.summary.matched ??
+        fields.filter((field) => field.validation_status === "matched").length
+
+    const mismatched =
+        validation?.summary.mismatched ??
+        fields.filter((field) => field.validation_status === "mismatch").length
+
+    const pending =
+        validation?.summary.not_found ??
+        fields.filter(
+            (field) =>
+                field.validation_status !== "matched" &&
+                field.validation_status !== "mismatch",
+        ).length
+
+    if (!fields.length) {
         return (
-            <Card>
+            <Card className="border-dashed">
                 <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                    No hay campos estructurados registrados para esta inspección.
+                    Aún no hay campos registrados para esta inspección.
                 </CardContent>
             </Card>
         )
     }
 
     return (
-        <div className="space-y-3">
-            {fields.map((field) => (
-                <Card key={field.id}>
-                    <CardContent className="space-y-4 p-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div>
-                                <h3 className="font-semibold">{field.field_label}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {field.field_group} · {field.expected_type} · {field.field_key}
-                                </p>
-                            </div>
+        <div className="space-y-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="grid gap-4 sm:grid-cols-3">
+                    <Card size="sm" className="border-border/60 shadow-sm">
+                        <CardHeader>
+                            <CardDescription>Coinciden</CardDescription>
+                            <CardTitle className="flex items-center gap-2">
+                                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                                {matched}
+                            </CardTitle>
+                        </CardHeader>
+                    </Card>
 
-                            <Badge variant={getValidationBadgeVariant(field.validation_status)}>
-                                {getValidationLabel(field.validation_status)}
-                            </Badge>
-                        </div>
+                    <Card size="sm" className="border-border/60 shadow-sm">
+                        <CardHeader>
+                            <CardDescription>Observados</CardDescription>
+                            <CardTitle className="flex items-center gap-2">
+                                <ShieldAlert className="h-4 w-4 text-rose-600" />
+                                {mismatched}
+                            </CardTitle>
+                        </CardHeader>
+                    </Card>
 
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <div className="rounded-xl border p-3">
-                                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                    Manual
-                                </p>
-                                <p className="mt-1 text-sm font-medium">
-                                    {field.manual_value || "Sin dato"}
-                                </p>
-                            </div>
+                    <Card size="sm" className="border-border/60 shadow-sm">
+                        <CardHeader>
+                            <CardDescription>Pendientes</CardDescription>
+                            <CardTitle className="flex items-center gap-2">
+                                <ShieldQuestion className="h-4 w-4 text-amber-600" />
+                                {pending}
+                            </CardTitle>
+                        </CardHeader>
+                    </Card>
+                </div>
 
-                            <div className="rounded-xl border p-3">
-                                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                    OCR
-                                </p>
-                                <p className="mt-1 text-sm font-medium">
-                                    {field.ocr_value || "Sin dato"}
-                                </p>
-                            </div>
+                <Button onClick={onValidate} disabled={isValidating}>
+                    {isValidating ? "Validando OCR..." : "Ejecutar validación OCR"}
+                </Button>
+            </div>
 
-                            <div className="rounded-xl border p-3">
-                                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                                    Final
-                                </p>
-                                <p className="mt-1 text-sm font-medium">
-                                    {field.final_value || "Sin dato"}
-                                </p>
-                            </div>
-                        </div>
+            <Card className="border-border/60 shadow-sm">
+                <CardHeader>
+                    <CardTitle>Campos estructurados</CardTitle>
+                    <CardDescription>
+                        Valores manuales, OCR y estado de validación por campo.
+                    </CardDescription>
+                </CardHeader>
 
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-              <span>
-                Confianza:{" "}
-                  {field.confidence != null
-                      ? `${field.confidence} (${getConfidenceLabel(field.confidence)})`
-                      : "No registrada"}
-              </span>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Campo</TableHead>
+                                <TableHead>Grupo</TableHead>
+                                <TableHead>Manual</TableHead>
+                                <TableHead>OCR</TableHead>
+                                <TableHead>Final</TableHead>
+                                <TableHead>Estado</TableHead>
+                            </TableRow>
+                        </TableHeader>
 
-                            <span>Actualizado: {formatDateTime(field.updated_at)}</span>
-                        </div>
-
-                        {field.validation_message ? (
-                            <div className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
-                                {field.validation_message}
-                            </div>
-                        ) : null}
-                    </CardContent>
-                </Card>
-            ))}
+                        <TableBody>
+                            {fields.map((field) => (
+                                <TableRow key={field.id}>
+                                    <TableCell className="whitespace-normal">
+                                        <div className="font-medium">{field.field_label}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {field.field_key}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>{field.field_group}</TableCell>
+                                    <TableCell>{field.manual_value || "—"}</TableCell>
+                                    <TableCell>{field.ocr_value || "—"}</TableCell>
+                                    <TableCell>{field.final_value || "—"}</TableCell>
+                                    <TableCell>
+                                        <div className="space-y-1">
+                                            <Badge variant={getValidationBadgeVariant(field.validation_status)}>
+                                                {field.validation_status}
+                                            </Badge>
+                                            {field.validation_message ? (
+                                                <p className="max-w-56 whitespace-normal text-xs text-muted-foreground">
+                                                    {field.validation_message}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
         </div>
     )
 }
