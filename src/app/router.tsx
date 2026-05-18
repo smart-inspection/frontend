@@ -1,9 +1,12 @@
 import { createBrowserRouter } from "react-router-dom"
+import { AppShell } from "@/components/layout/app-shell"
+import { DashboardPage } from "@/features/dashboard/pages/dashboard-page"
+import { ReportsPage } from "@/features/reports/pages/reports-page"
 import { EvidencesPage } from "@/features/evidences/pages/evidences-page"
-import { InspectionsPage } from "@/features/inspections/pages/inspections-page"
-import {AppShell} from "@/components/layout/app-shell";
-import {DashboardPage} from "@/features/dashboard/pages/dashboard-page";
-import {ReportsPage} from "@/features/reports/pages/reports-page";
+
+import InspectionsPage from "../features/inspections/pages/InspectionsPage"
+import InspectionDetailPage from "../features/inspections/pages/InspectionDetailPage"
+import { CreateInspectionPage as CreateInspectionPage } from "../features/inspections/pages/CreateInspectionPage"
 
 export const router = createBrowserRouter([
     {
@@ -19,6 +22,14 @@ export const router = createBrowserRouter([
                 element: <InspectionsPage />,
             },
             {
+                path: "inspections/new",
+                element: <CreateInspectionPage />,
+            },
+            {
+                path: "inspections/:inspectionId",
+                element: <InspectionDetailPage />,
+            },
+            {
                 path: "evidences",
                 element: <EvidencesPage />,
             },
@@ -26,6 +37,6 @@ export const router = createBrowserRouter([
                 path: "reports",
                 element: <ReportsPage />,
             },
-        ]
-    }
+        ],
+    },
 ])
