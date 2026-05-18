@@ -386,6 +386,7 @@ export default function InspectionDetailPage() {
 
                 <TabsContent value="fields">
                     <InspectionFieldsTab
+                        inspectionId={inspectionId}
                         fields={fields}
                         validation={validateOcrMutation.data ?? null}
                         isValidating={validateOcrMutation.isPending}

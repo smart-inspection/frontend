@@ -480,3 +480,15 @@ export function getExportPdfUrl(draftId: number): string {
 export function getExportDocxUrl(draftId: number): string {
     return `${API_BASE_URL}/report-export/docx/${draftId}`
 }
+
+export async function updateInspectionField(
+    inspectionId: number,
+    fieldId: number,
+    payload: { final_value: string },
+): Promise<InspectionField> {
+    const response = await apiPut<any>(
+        `/inspections/${inspectionId}/fields/${fieldId}`,
+        payload,
+    )
+    return mapInspectionField(response)
+}

@@ -21,7 +21,7 @@ import {
     updateReportDraft,
     updateReportStatus,
     updateTranscription,
-    validateInspectionOcr,
+    validateInspectionOcr, updateInspectionField,
 } from "./inspections.api"
 
 import { inspectionsKeys } from "./inspections.keys"
@@ -295,6 +295,25 @@ export function useUpdateReportStatusMutation(draftId: number) {
             queryClient.invalidateQueries({
                 queryKey: inspectionsKeys.draft(draftId),
             })
+        },
+    })
+}
+
+export function useUpdateInspectionFieldMutation(inspectionId: number) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: ({
+                         fieldId,
+                         payload,
+                     }: {
+            fieldId: number
+            payload: { final_value: string }
+        }) => updateInspectionField(inspectionId, fieldId, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: inspectionsKeys.fields(inspectionId) })
+            queryClient.invalidateQueries({ queryKey: inspectionsKeys.detail(inspectionId) })
+            queryClient.invalidateQueries({ queryKey: inspectionsKeys.ocrValidation(inspectionId) })
         },
     })
 }
