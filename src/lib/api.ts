@@ -8,6 +8,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ...init,
         headers: {
             ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+            "ngrok-skip-browser-warning": "true",
             ...(init?.headers ?? {}),
         },
     })
