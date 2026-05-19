@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/tabs"
 
 import {
-    useCreateInspectionEvidenceMutation,
+    useCreateInspectionEvidenceMutation, useCreateInspectionFieldMutation,
     useCreateTranscriptionMutation,
     useExtractEvidenceOcrMutation,
     useGenerateLlmReportDraftMutation,
@@ -124,6 +124,8 @@ export default function InspectionDetailPage() {
     const generateLlmDraftMutation = useGenerateLlmReportDraftMutation(inspectionId)
     const updateDraftMutation = useUpdateReportDraftMutation(inspectionId)
 
+    const createFieldMutation = useCreateInspectionFieldMutation(inspectionId)
+
     if (isInvalidInspectionId) {
         return (
             <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
@@ -160,6 +162,16 @@ export default function InspectionDetailPage() {
 
     const handleUploadEvidence = async (payload: EvidenceCreateInput) => {
         await createEvidenceMutation.mutateAsync(payload)
+    }
+
+    async function handleCreateField(payload: {
+        field_key: string
+        field_label: string
+        field_group: string
+        expected_type: string
+        manual_value: string
+    }) {
+        await createFieldMutation.mutateAsync(payload)
     }
 
     const handleRunEvidenceOcr = async (evidenceId: number) => {
@@ -390,7 +402,14 @@ export default function InspectionDetailPage() {
                         fields={fields}
                         validation={validateOcrMutation.data ?? null}
                         isValidating={validateOcrMutation.isPending}
+                        isCreatingField={createFieldMutation.isPending}
+                        createFieldError={
+                            createFieldMutation.error instanceof Error
+                                ? createFieldMutation.error.message
+                                : null
+                        }
                         onValidate={handleValidateOcr}
+                        onCreateField={handleCreateField}
                     />
                 </TabsContent>
 
