@@ -110,17 +110,20 @@ function mapEvidence(raw: any): Evidence {
         file_path: asString(pickFirst(raw?.file_path, raw?.filepath)),
         file_url: asString(pickFirst(raw?.file_url, raw?.fileurl)),
         file_type: asString(pickFirst(raw?.file_type, raw?.filetype)),
-        evidence_category: asString(
-            pickFirst(raw?.evidence_category, raw?.evidencecategory),
-        ),
+        evidence_category: asString(pickFirst(raw?.evidence_category, raw?.evidencecategory)),
         caption: asNullableString(raw?.caption),
-        ocr_extracted_text: asNullableString(
-            pickFirst(raw?.ocr_extracted_text, raw?.ocrextractedtext),
-        ),
-        ocr_confidence: asNullableNumber(
-            pickFirst(raw?.ocr_confidence, raw?.ocrconfidence),
-        ),
-        ocr_processed: asBoolean(pickFirst(raw?.ocr_processed, raw?.ocrprocessed)),
+        raw_label: asNullableString(pickFirst(raw?.raw_label, raw?.rawlabel)),
+        normalized_label: asNullableString(pickFirst(raw?.normalized_label, raw?.normalizedlabel)),
+        evidence_slot: asNullableString(pickFirst(raw?.evidence_slot, raw?.evidenceslot)),
+        component_code: asNullableString(pickFirst(raw?.component_code, raw?.componentcode)),
+        axle_number: asNullableNumber(pickFirst(raw?.axle_number, raw?.axlenumber)),
+        side: asNullableString(raw?.side),
+        is_reference: asBoolean(pickFirst(raw?.is_reference, raw?.isreference), false),
+        label_confidence: asNullableNumber(pickFirst(raw?.label_confidence, raw?.labelconfidence)),
+        metadata_json: asRecord(pickFirst(raw?.metadata_json, raw?.metadatajson)),
+        ocr_extracted_text: asNullableString(pickFirst(raw?.ocr_extracted_text, raw?.ocrextractedtext)),
+        ocr_confidence: asNullableNumber(pickFirst(raw?.ocr_confidence, raw?.ocrconfidence)),
+        ocr_processed: asBoolean(pickFirst(raw?.ocr_processed, raw?.ocrprocessed), false),
         ocr_last_processed_at: asNullableString(
             pickFirst(raw?.ocr_last_processed_at, raw?.ocrlastprocessedat),
         ),
@@ -336,18 +339,38 @@ export async function createInspectionEvidence(
     payload: EvidenceCreateInput,
 ): Promise<Evidence> {
     const formData = new FormData()
-    formData.append("file", payload.file)
-    formData.append("evidence_category", payload.evidence_category)
+    const categoryValue = payload.evidence_category.trim()
+    const captionValue = payload.caption?.trim() || null
+    const rawLabelValue = payload.raw_label?.trim() || categoryValue
+    const componentCodeValue = payload.component_code?.trim() || categoryValue
+    const sideValue = payload.side?.trim() || null
 
-    if (payload.caption != null) {
-        formData.append("caption", payload.caption)
+    formData.append("file", payload.file)
+    formData.append("evidence_category", categoryValue)
+
+    if (captionValue !== null) {
+        formData.append("caption", captionValue)
     }
 
-    const response = await apiPostForm<any>(
-        `/inspections/${inspectionId}/evidences`,
-        formData,
-    )
+    if (rawLabelValue) {
+        formData.append("raw_label", rawLabelValue)
+    }
 
+    if (componentCodeValue) {
+        formData.append("component_code", componentCodeValue)
+    }
+
+    if (payload.axle_number !== null && payload.axle_number !== undefined) {
+        formData.append("axle_number", String(payload.axle_number))
+    }
+
+    if (sideValue) {
+        formData.append("side", sideValue)
+    }
+
+    formData.append("is_reference", String(Boolean(payload.is_reference)))
+
+    const response = await apiPostForm<any>(`/inspections/${inspectionId}/evidences`, formData)
     return mapEvidence(response)
 }
 

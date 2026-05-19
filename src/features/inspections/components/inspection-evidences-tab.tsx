@@ -46,20 +46,34 @@ export function InspectionEvidencesTab({
     const [evidenceCategory, setEvidenceCategory] = useState("general")
     const [caption, setCaption] = useState("")
 
+    const [axleNumber, setAxleNumber] = useState("")
+    const [side, setSide] = useState("")
+    const [isReference, setIsReference] = useState(false)
+
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
         if (!file) return
 
+        const categoryValue = evidenceCategory.trim()
+
         await onUpload({
             file,
-            evidence_category: evidenceCategory.trim(),
+            evidence_category: categoryValue,
             caption: caption.trim() || null,
+            raw_label: categoryValue || null,
+            component_code: categoryValue || null,
+            axle_number: axleNumber.trim() ? Number(axleNumber) : null,
+            side: side || null,
+            is_reference: isReference,
         })
 
         setFile(null)
         setCaption("")
         setEvidenceCategory("general")
+        setAxleNumber("")
+        setSide("")
+        setIsReference(false)
     }
 
     return (
@@ -104,6 +118,43 @@ export function InspectionEvidencesTab({
                                 onChange={(e) => setCaption(e.target.value)}
                                 placeholder="Foto lateral del equipo"
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="evidence-axle-number">N° de eje</Label>
+                            <Input
+                                id="evidence-axle-number"
+                                type="number"
+                                min="1"
+                                value={axleNumber}
+                                onChange={(e) => setAxleNumber(e.target.value)}
+                                placeholder="1"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="evidence-side">Lado</Label>
+                            <select
+                                id="evidence-side"
+                                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
+                                value={side}
+                                onChange={(e) => setSide(e.target.value)}
+                            >
+                                <option value="">Sin lado</option>
+                                <option value="left">Izquierdo</option>
+                                <option value="right">Derecho</option>
+                                <option value="center">Centro</option>
+                            </select>
+                        </div>
+
+                        <div className="md:col-span-2 flex items-center gap-2">
+                            <input
+                                id="evidence-is-reference"
+                                type="checkbox"
+                                checked={isReference}
+                                onChange={(e) => setIsReference(e.target.checked)}
+                            />
+                            <Label htmlFor="evidence-is-reference">Es referencia</Label>
                         </div>
 
                         {uploadError ? (

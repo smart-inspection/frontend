@@ -62,6 +62,15 @@ export type Evidence = {
     file_type: string
     evidence_category: string
     caption: string | null
+    raw_label: string | null
+    normalized_label: string | null
+    evidence_slot: string | null
+    component_code: string | null
+    axle_number: number | null
+    side: string | null
+    is_reference: boolean
+    label_confidence: number | null
+    metadata_json: Record<string, unknown> | null
     ocr_extracted_text: string | null
     ocr_confidence: number | null
     ocr_processed: boolean
@@ -73,6 +82,11 @@ export type EvidenceCreateInput = {
     file: File
     evidence_category: string
     caption?: string | null
+    raw_label?: string | null
+    component_code?: string | null
+    axle_number?: number | null
+    side?: string | null
+    is_reference?: boolean
 }
 
 export type EvidenceOcrResponse = {
