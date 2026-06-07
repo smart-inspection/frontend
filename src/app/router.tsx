@@ -9,6 +9,7 @@ import InspectionDetailPage from "../features/inspections/pages/InspectionDetail
 import { CreateInspectionPage as CreateInspectionPage } from "../features/inspections/pages/CreateInspectionPage"
 
 import { PublicInspectionRequestPage } from "@/features/requests/pages/public-inspection-request-page"
+import { InspectionRequestsPage } from "@/features/requests/pages/inspection-requests-page"
 
 export const router = createBrowserRouter([
     {
@@ -22,6 +23,10 @@ export const router = createBrowserRouter([
             {
                 index: true,
                 element: <DashboardPage />,
+            },
+            {
+                path: "inspection-requests",
+                element: <InspectionRequestsPage />,
             },
             {
                 path: "inspections",

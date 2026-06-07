@@ -21,7 +21,7 @@ import {
     updateReportDraft,
     updateReportStatus,
     updateTranscription,
-    validateInspectionOcr, updateInspectionField,
+    validateInspectionOcr, updateInspectionField, convertInspectionRequest,
 } from "./inspections.api"
 
 import { inspectionsKeys } from "./inspections.keys"
@@ -126,6 +126,18 @@ export function useCreateInspectionMutation() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: inspectionsKeys.list() })
         },
+    })
+}
+
+export function useConvertInspectionRequestMutation() {
+    return useMutation({
+        mutationFn: ({
+                         inspectionRequestId,
+                         payload,
+                     }: {
+            inspectionRequestId: number
+            payload: Parameters<typeof convertInspectionRequest>[1]
+        }) => convertInspectionRequest(inspectionRequestId, payload),
     })
 }
 

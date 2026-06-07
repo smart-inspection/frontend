@@ -67,11 +67,11 @@ function toApiPayload(payload: InspectionRequestCreateInput) {
 export async function createInspectionRequest(
     payload: InspectionRequestCreateInput,
 ): Promise<InspectionRequest> {
-    const response = await apiPost<any>("inspection-requests", toApiPayload(payload))
+    const response = await apiPost<any>("/inspection-requests", toApiPayload(payload))
     return mapInspectionRequest(response)
 }
 
 export async function getInspectionRequests(): Promise<InspectionRequest[]> {
-    const response = await apiGet<any>("inspection-requests")
+    const response = await apiGet<any>("/inspection-requests")
     return Array.isArray(response) ? response.map(mapInspectionRequest) : []
 }

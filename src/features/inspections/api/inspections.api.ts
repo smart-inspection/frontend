@@ -14,7 +14,7 @@ import type {
     Inspection,
     InspectionCreateInput,
     InspectionField,
-    InspectionFieldCreateInput,
+    InspectionFieldCreateInput, InspectionRequestConvertInput,
     LlmReportGenerateInput,
     OcrExtractResponse,
     OcrValidationItem,
@@ -306,6 +306,19 @@ export async function createInspection(
     })
 
     return mapInspection(response)
+}
+
+export async function convertInspectionRequest(
+    inspectionRequestId: number,
+    payload: InspectionRequestConvertInput,
+): Promise<void> {
+    await apiPatch(
+        `inspection-requests/${inspectionRequestId}/convert`,
+        {
+            inspection_id: payload.inspection_id,
+            status: payload.status ?? "converted",
+        },
+    )
 }
 
 export async function getInspectionFields(

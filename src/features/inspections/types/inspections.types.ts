@@ -25,6 +25,11 @@ export type InspectionCreateInput = {
     status?: string
 }
 
+export type InspectionRequestConvertInput = {
+    inspection_id: number
+    status?: string
+}
+
 export type InspectionField = {
     id: number
     inspection_id: number

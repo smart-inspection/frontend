@@ -1,9 +1,17 @@
 import { Link, NavLink, Outlet } from "react-router-dom"
-import { ClipboardList, FileText, FolderOpen, LayoutDashboard } from "lucide-react"
+import {
+    ClipboardList,
+    ClipboardPlus,
+    FileText,
+    FolderOpen,
+    LayoutDashboard,
+} from "lucide-react"
+
 import { cn } from "@/lib/utils"
 
 const items = [
     { to: "/", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/inspection-requests", label: "Solicitudes", icon: ClipboardPlus },
     { to: "/inspections", label: "Inspecciones", icon: ClipboardList },
     { to: "/evidences", label: "Evidencias", icon: FolderOpen },
     { to: "/reports", label: "Informes", icon: FileText },
@@ -23,6 +31,7 @@ export function AppShell() {
                     <nav className="flex flex-col gap-1 p-4">
                         {items.map((item) => {
                             const Icon = item.icon
+
                             return (
                                 <NavLink
                                     key={item.to}
