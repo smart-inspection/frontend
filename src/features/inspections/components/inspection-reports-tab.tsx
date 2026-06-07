@@ -1,7 +1,13 @@
+import { useEffect, useState } from "react"
+
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-
+import {
+    formatInspectionStatus,
+    getInspectionStatusVariant,
+} from "@/features/inspections/types/inspections.utils"
 import {
     buildReportExportUrl,
     formatDateTime,
@@ -54,6 +60,73 @@ export function InspectionReportsTab({
                                          reportStatusQuery,
                                          reportHistoryQuery,
                                      }: InspectionReportsTabProps) {
+    const REPORT_GOAL_MINUTES = 20
+
+    const currentReportStatus = (
+        reportStatusQuery.data?.status ||
+        selectedDraft?.status ||
+        "draft"
+    ).toLowerCase()
+
+    const visualReportStatus =
+        reportStatusQuery.data?.status || selectedDraft?.status || "draft"
+
+    const reportHistory = reportHistoryQuery.data ?? []
+
+    const reportStartedAt =
+        reportHistory.find((item) => item.to_status?.toLowerCase() === "in_review")
+            ?.created_at ?? null
+
+    const reportFinishedAt =
+        reportHistory.find((item) => item.to_status?.toLowerCase() === "finalized")
+            ?.created_at ?? null
+
+    const reportDurationMinutes =
+        reportStartedAt && reportFinishedAt
+            ? Math.max(
+                0,
+                Math.round(
+                    (new Date(reportFinishedAt).getTime() -
+                        new Date(reportStartedAt).getTime()) /
+                    60000,
+                ),
+            )
+            : null
+
+    const [liveElapsedMs, setLiveElapsedMs] = useState(0)
+
+    useEffect(() => {
+        if (currentReportStatus !== "in_review" || !reportStartedAt || reportFinishedAt) {
+            setLiveElapsedMs(0)
+            return
+        }
+
+        const updateElapsed = () => {
+            setLiveElapsedMs(
+                Math.max(0, new Date().getTime() - new Date(reportStartedAt).getTime()),
+            )
+        }
+
+        updateElapsed()
+        const intervalId = window.setInterval(updateElapsed, 1000)
+
+        return () => window.clearInterval(intervalId)
+    }, [currentReportStatus, reportStartedAt, reportFinishedAt])
+
+    const liveElapsedMinutes = Math.max(0, Math.floor(liveElapsedMs / 60000))
+    const liveElapsedSeconds = Math.max(0, Math.floor((liveElapsedMs % 60000) / 1000))
+
+    const liveElapsedLabel =
+        currentReportStatus === "in_review" && reportStartedAt && !reportFinishedAt
+            ? `${String(liveElapsedMinutes).padStart(2, "0")}:${String(
+                liveElapsedSeconds,
+            ).padStart(2, "0")}`
+            : null
+
+    const isOverGoal =
+        currentReportStatus === "in_review"
+            ? liveElapsedMs > REPORT_GOAL_MINUTES * 60 * 1000
+            : reportDurationMinutes !== null && reportDurationMinutes > REPORT_GOAL_MINUTES
     return (
         <div className="space-y-4">
             <Card>
@@ -129,8 +202,36 @@ export function InspectionReportsTab({
                                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                                     Estado
                                 </p>
-                                <p className="mt-1 font-medium">
-                                    {selectedDraft.status || "No registrado"}
+                                <div className="mt-2">
+                                    <Badge variant={getInspectionStatusVariant(visualReportStatus)}>
+                                        {formatInspectionStatus(visualReportStatus)}
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border p-4">
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                    Duración operativa
+                                </p>
+
+                                <p className={`mt-1 font-medium ${isOverGoal ? "text-destructive" : ""}`}>
+                                    {liveElapsedLabel
+                                        ? `${liveElapsedLabel} min`
+                                        : reportDurationMinutes !== null
+                                            ? `${reportDurationMinutes} min`
+                                            : "No iniciada"}
+                                </p>
+
+                                <p className={`mt-1 text-xs ${isOverGoal ? "text-destructive" : "text-muted-foreground"}`}>
+                                    {liveElapsedLabel
+                                        ? isOverGoal
+                                            ? "Superó la meta operativa de 20 min"
+                                            : "Contador en vivo del informe en proceso"
+                                        : reportDurationMinutes !== null
+                                            ? reportDurationMinutes <= REPORT_GOAL_MINUTES
+                                                ? "Cumple meta de 20 min"
+                                                : "Fuera de meta de 20 min"
+                                            : "La meta se calcula al finalizar"}
                                 </p>
                             </div>
 
