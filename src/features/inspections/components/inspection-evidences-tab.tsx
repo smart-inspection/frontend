@@ -37,10 +37,8 @@ export function InspectionEvidencesTab({
                                            isUploading,
                                            uploadError,
                                            runningEvidenceId,
-                                           extractingEvidenceId,
                                            onUpload,
                                            onRunOcr,
-                                           onExtract,
                                        }: InspectionEvidencesTabProps) {
     const [file, setFile] = useState<File | null>(null)
     const [evidenceCategory, setEvidenceCategory] = useState("general")
@@ -258,17 +256,6 @@ export function InspectionEvidencesTab({
                                         {runningEvidenceId === evidence.id
                                             ? "Procesando OCR..."
                                             : "Ejecutar OCR"}
-                                    </Button>
-
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => onExtract(evidence.id)}
-                                        disabled={extractingEvidenceId === evidence.id}
-                                    >
-                                        {extractingEvidenceId === evidence.id
-                                            ? "Extrayendo..."
-                                            : "Extraer texto"}
                                     </Button>
 
                                     <Button asChild variant="ghost">
