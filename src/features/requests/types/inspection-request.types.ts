@@ -1,4 +1,4 @@
-export type InspectionRequestStatus = "pending"
+export type InspectionRequestStatus = "pending" | "converted"
 
 export interface InspectionRequest {
     id: number
@@ -12,6 +12,7 @@ export interface InspectionRequest {
     equipmentType: string | null
     notes: string | null
     status: string
+    inspectionId: number | null
     createdAt: string
     updatedAt: string
 }

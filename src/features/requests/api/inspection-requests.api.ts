@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/lib/api"
+import { apiGet, apiPost, apiPatch } from "@/lib/api"
 
 import type {
     InspectionRequest,
@@ -22,6 +22,8 @@ function pickFirst<T>(...values: Array<T | null | undefined>): T | undefined {
 }
 
 function mapInspectionRequest(raw: any): InspectionRequest {
+    const inspectionIdValue = pickFirst(raw?.inspectionId, raw?.inspectionid)
+
     return {
         id: asNumber(raw?.id),
         companyName: asString(pickFirst(raw?.companyName, raw?.company_name)),
@@ -44,6 +46,10 @@ function mapInspectionRequest(raw: any): InspectionRequest {
         ),
         notes: asNullableString(raw?.notes),
         status: asString(raw?.status, "pending"),
+        inspectionId:
+            typeof inspectionIdValue === "number" && Number.isFinite(inspectionIdValue)
+                ? inspectionIdValue
+                : null,
         createdAt: asString(pickFirst(raw?.createdAt, raw?.created_at)),
         updatedAt: asString(pickFirst(raw?.updatedAt, raw?.updated_at)),
     }
@@ -74,4 +80,19 @@ export async function createInspectionRequest(
 export async function getInspectionRequests(): Promise<InspectionRequest[]> {
     const response = await apiGet<any>("/inspection-requests")
     return Array.isArray(response) ? response.map(mapInspectionRequest) : []
+}
+
+export async function convertInspectionRequest(
+    inspectionRequestId: number,
+    payload: { inspection_id: number; status?: string },
+): Promise<InspectionRequest> {
+    const response = await apiPatch<any>(
+        `/inspection-requests/${inspectionRequestId}/convert`,
+        {
+            inspection_id: payload.inspection_id,
+            status: payload.status ?? "converted",
+        },
+    )
+
+    return mapInspectionRequest(response)
 }

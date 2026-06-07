@@ -313,7 +313,7 @@ export async function convertInspectionRequest(
     payload: InspectionRequestConvertInput,
 ): Promise<void> {
     await apiPatch(
-        `inspection-requests/${inspectionRequestId}/convert`,
+        `/inspection-requests/${inspectionRequestId}/convert`,
         {
             inspection_id: payload.inspection_id,
             status: payload.status ?? "converted",
