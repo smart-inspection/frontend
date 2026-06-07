@@ -1,12 +1,15 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import {
     ArrowLeft,
     CalendarDays,
+    CheckCircle2,
     ClipboardList,
+    Clock3,
     FileText,
     FolderOpen,
     Languages,
+    PlayCircle,
     ShieldCheck,
     UserRound,
     Wrench,
@@ -30,7 +33,8 @@ import {
 } from "@/components/ui/tabs"
 
 import {
-    useCreateInspectionEvidenceMutation, useCreateInspectionFieldMutation,
+    useCreateInspectionEvidenceMutation,
+    useCreateInspectionFieldMutation,
     useCreateTranscriptionMutation,
     useExtractEvidenceOcrMutation,
     useGenerateLlmReportDraftMutation,
@@ -40,8 +44,11 @@ import {
     useInspectionEvidencesQuery,
     useInspectionFieldsQuery,
     useInspectionTranscriptionsQuery,
+    useReportHistoryQuery,
+    useReportStatusQuery,
     useRunEvidenceOcrMutation,
     useUpdateReportDraftMutation,
+    useUpdateReportStatusMutation,
     useUpdateTranscriptionMutation,
     useValidateInspectionOcrMutation,
 } from "@/features/inspections/api/inspections.queries"
@@ -59,6 +66,7 @@ import type {
     EvidenceCreateInput,
     TranscriptionCreateInput,
 } from "../types/inspections.types"
+import { InspectionReportsTab } from "@/features/inspections/components/inspection-reports-tab"
 
 function InspectionDetailSkeleton() {
     return (
@@ -103,6 +111,7 @@ export default function InspectionDetailPage() {
     const [extractingEvidenceId, setExtractingEvidenceId] = useState<number | null>(null)
     const [savingTranscriptionId, setSavingTranscriptionId] = useState<number | null>(null)
     const [savingDraftId, setSavingDraftId] = useState<number | null>(null)
+    const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null)
 
     const isInvalidInspectionId = !Number.isFinite(inspectionId) || inspectionId <= 0
 
@@ -146,11 +155,147 @@ export default function InspectionDetailPage() {
         )
     }
 
-    const inspection = inspectionQuery.data
     const fields = fieldsQuery.data ?? []
     const evidences = evidencesQuery.data ?? []
     const transcriptions = transcriptionsQuery.data ?? []
     const drafts = draftsQuery.data ?? []
+
+    const REPORT_GOAL_MINUTES = 20
+
+    const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null)
+    const [optimisticStartedAt, setOptimisticStartedAt] = useState<string | null>(null)
+    const [optimisticFinishedAt, setOptimisticFinishedAt] = useState<string | null>(null)
+
+    const selectedDraft =
+        drafts.find((draft) => draft.id === selectedDraftId) ??
+        drafts[0] ??
+        null
+
+    const reportStatusQuery = useReportStatusQuery(selectedDraft?.id ?? 0)
+    const reportHistoryQuery = useReportHistoryQuery(selectedDraft?.id ?? 0, 20)
+    const updateReportStatusMutation = useUpdateReportStatusMutation(
+        selectedDraft?.id ?? 0,
+        inspectionId,
+    )
+
+    const reportStatus = reportStatusQuery.data ?? null
+    const reportHistory = reportHistoryQuery.data ?? []
+
+    const currentReportStatus = (
+        optimisticStatus ||
+        reportStatus?.status ||
+        selectedDraft?.status ||
+        ""
+    ).toLowerCase()
+
+    const visualReportStatus =
+        optimisticStatus || reportStatus?.status || selectedDraft?.status || "draft"
+
+    const reportStartedAt =
+        optimisticStartedAt ??
+        reportHistory.find((item) => item.to_status?.toLowerCase() === "in_review")
+            ?.created_at ??
+        null
+
+    const reportFinishedAt =
+        optimisticFinishedAt ??
+        reportHistory.find((item) => item.to_status?.toLowerCase() === "finalized")
+            ?.created_at ??
+        null
+
+    const reportDurationMinutes =
+        reportStartedAt && reportFinishedAt
+            ? Math.max(
+                0,
+                Math.round(
+                    (new Date(reportFinishedAt).getTime() -
+                        new Date(reportStartedAt).getTime()) /
+                    60000,
+                ),
+            )
+            : null
+    const [liveElapsedMs, setLiveElapsedMs] = useState(0)
+
+    useEffect(() => {
+        if (currentReportStatus !== "in_review" || !reportStartedAt || reportFinishedAt) {
+            setLiveElapsedMs(0)
+            return
+        }
+
+        const updateElapsed = () => {
+            setLiveElapsedMs(
+                Math.max(0, new Date().getTime() - new Date(reportStartedAt).getTime()),
+            )
+        }
+
+        updateElapsed()
+        const intervalId = window.setInterval(updateElapsed, 1000)
+
+        return () => window.clearInterval(intervalId)
+    }, [currentReportStatus, reportStartedAt, reportFinishedAt])
+
+    const liveElapsedMinutes = Math.max(0, Math.floor(liveElapsedMs / 60000))
+    const liveElapsedSeconds = Math.max(0, Math.floor((liveElapsedMs % 60000) / 1000))
+
+    const liveElapsedLabel =
+        currentReportStatus === "in_review" && reportStartedAt && !reportFinishedAt
+            ? `${String(liveElapsedMinutes).padStart(2, "0")}:${String(
+                liveElapsedSeconds,
+            ).padStart(2, "0")}`
+            : null
+
+    const isOverGoal =
+        currentReportStatus === "in_review"
+            ? liveElapsedMs > REPORT_GOAL_MINUTES * 60 * 1000
+            : reportDurationMinutes !== null && reportDurationMinutes > REPORT_GOAL_MINUTES
+
+    useEffect(() => {
+        if (!drafts.length) {
+            setSelectedDraftId(null)
+            return
+        }
+
+        const stillExists = drafts.some((draft) => draft.id === selectedDraftId)
+
+        if (!selectedDraftId || !stillExists) {
+            setSelectedDraftId(drafts[0].id)
+        }
+    }, [drafts, selectedDraftId])
+
+    if (inspectionQuery.isLoading) {
+        return (
+            <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
+                <InspectionDetailSkeleton />
+            </section>
+        )
+    }
+
+    if (inspectionQuery.isError || !inspectionQuery.data) {
+        const message =
+            inspectionQuery.error instanceof Error
+                ? inspectionQuery.error.message
+                : "No se pudo cargar la inspección."
+
+        return (
+            <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
+                <Card className="border-destructive/30">
+                    <CardContent className="py-10 text-center">
+                        <h2 className="text-lg font-semibold text-destructive">
+                            Error al cargar la inspección
+                        </h2>
+                        <p className="mt-2 text-sm text-muted-foreground">{message}</p>
+                        <div className="mt-4">
+                            <Button asChild variant="outline">
+                                <Link to="/inspections">Volver al listado</Link>
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
+        )
+    }
+
+    const inspection = inspectionQuery.data
 
     const observedFields = fields.filter(
         (field) => field.validation_status === "mismatch",
@@ -228,6 +373,7 @@ export default function InspectionDetailPage() {
 
     const handleSaveDraft = async (draftId: number, editedText: string) => {
         try {
+            setSavingDraftId(draftId)
             await updateDraftMutation.mutateAsync({
                 draftId,
                 edited_text: editedText,
@@ -235,6 +381,68 @@ export default function InspectionDetailPage() {
             })
         } finally {
             setSavingDraftId(null)
+        }
+    }
+
+    const handleStartReport = async () => {
+        if (!selectedDraft) return
+
+        const startedAt = new Date().toISOString()
+
+        setOptimisticStatus("in_review")
+        setOptimisticStartedAt(startedAt)
+        setOptimisticFinishedAt(null)
+
+        try {
+            await updateReportStatusMutation.mutateAsync({
+                status: "in_review",
+                notes: "Informe iniciado desde el detalle de inspección",
+            })
+
+            await Promise.all([
+                reportStatusQuery.refetch(),
+                reportHistoryQuery.refetch(),
+                draftsQuery.refetch(),
+            ])
+
+            setOptimisticStatus(null)
+            setOptimisticStartedAt(null)
+            setOptimisticFinishedAt(null)
+        } catch (error) {
+            setOptimisticStatus(null)
+            setOptimisticStartedAt(null)
+            setOptimisticFinishedAt(null)
+            throw error
+        }
+    }
+
+    const handleFinishReport = async () => {
+        if (!selectedDraft) return
+
+        const finishedAt = new Date().toISOString()
+
+        setOptimisticStatus("finalized")
+        setOptimisticFinishedAt(finishedAt)
+
+        try {
+            await updateReportStatusMutation.mutateAsync({
+                status: "finalized",
+                notes: "Informe finalizado desde el detalle de inspección",
+            })
+
+            await Promise.all([
+                reportStatusQuery.refetch(),
+                reportHistoryQuery.refetch(),
+                draftsQuery.refetch(),
+            ])
+
+            setOptimisticStatus(null)
+            setOptimisticStartedAt(null)
+            setOptimisticFinishedAt(null)
+        } catch (error) {
+            setOptimisticStatus(null)
+            setOptimisticFinishedAt(null)
+            throw error
         }
     }
 
@@ -258,39 +466,6 @@ export default function InspectionDetailPage() {
             language: "es",
             model_name: "base",
         })
-    }
-
-    if (inspectionQuery.isLoading) {
-        return (
-            <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
-                <InspectionDetailSkeleton />
-            </section>
-        )
-    }
-
-    if (inspectionQuery.isError || !inspection) {
-        const message =
-            inspectionQuery.error instanceof Error
-                ? inspectionQuery.error.message
-                : "No se pudo cargar la inspección."
-
-        return (
-            <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
-                <Card className="border-destructive/30">
-                    <CardContent className="py-10 text-center">
-                        <h2 className="text-lg font-semibold text-destructive">
-                            Error al cargar la inspección
-                        </h2>
-                        <p className="mt-2 text-sm text-muted-foreground">{message}</p>
-                        <div className="mt-4">
-                            <Button asChild variant="outline">
-                                <Link to="/inspections">Volver al listado</Link>
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </section>
-        )
     }
 
     return (
@@ -375,6 +550,107 @@ export default function InspectionDetailPage() {
                     </CardHeader>
                 </Card>
             </div>
+
+            <Card className="border-border/60 shadow-sm">
+                <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2">
+                            <Clock3 className="h-4 w-4" />
+                            Operación del informe
+                        </CardTitle>
+                        <CardDescription>
+                            Controla el inicio y cierre del informe técnico desde la inspección.
+                        </CardDescription>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={handleStartReport}
+                            disabled={
+                                !selectedDraft ||
+                                updateReportStatusMutation.isPending ||
+                                currentReportStatus === "in_review" ||
+                                currentReportStatus === "finalized"
+                            }
+                        >
+                            <PlayCircle className="h-4 w-4" />
+                            Iniciar informe
+                        </Button>
+
+                        <Button
+                            onClick={handleFinishReport}
+                            disabled={
+                                !selectedDraft ||
+                                updateReportStatusMutation.isPending ||
+                                currentReportStatus !== "in_review"
+                            }
+                        >
+                            <CheckCircle2 className="h-4 w-4" />
+                            Finalizar informe
+                        </Button>
+                    </div>
+                </CardHeader>
+
+                <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-lg border bg-muted/30 p-4">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Borrador activo
+                        </p>
+                        <p className="mt-1 text-sm font-medium">
+                            {selectedDraft ? `Draft #${selectedDraft.id}` : "No disponible"}
+                        </p>
+                    </div>
+
+                    <div className="rounded-lg border bg-muted/30 p-4">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Estado actual
+                        </p>
+                        <div className="mt-2">
+                            <Badge variant={getInspectionStatusVariant(visualReportStatus)}>
+                                {formatInspectionStatus(visualReportStatus)}
+                            </Badge>
+                        </div>
+                    </div>
+
+                    <div className="rounded-lg border bg-muted/30 p-4">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Inicio del informe
+                        </p>
+                        <p className="mt-1 text-sm font-medium">
+                            {reportStartedAt
+                                ? new Date(reportStartedAt).toLocaleString("es-PE")
+                                : "Pendiente"}
+                        </p>
+                    </div>
+
+                    <div className="rounded-lg border bg-muted/30 p-4">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            Duración acumulada
+                        </p>
+
+                        <p className={`mt-1 text-sm font-medium ${isOverGoal ? "text-destructive" : ""}`}>
+                            {liveElapsedLabel
+                                ? `${liveElapsedLabel} min`
+                                : reportDurationMinutes !== null
+                                    ? `${reportDurationMinutes} min`
+                                    : "No iniciada"}
+                        </p>
+
+                        <p className={`mt-1 text-xs ${isOverGoal ? "text-destructive" : "text-muted-foreground"}`}>
+                            {liveElapsedLabel
+                                ? isOverGoal
+                                    ? "Superó la meta operativa de 20 min"
+                                    : "Contador en vivo del informe en proceso"
+                                : reportDurationMinutes !== null
+                                    ? reportDurationMinutes <= REPORT_GOAL_MINUTES
+                                        ? "Cumple meta de 20 min"
+                                        : "Fuera de meta de 20 min"
+                                    : "La meta se calcula al finalizar"}
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
 
             <Tabs defaultValue="fields" className="gap-5">
                 <TabsList variant="line" className="w-full justify-start overflow-x-auto">
@@ -473,6 +749,20 @@ export default function InspectionDetailPage() {
                         onGenerate={handleGenerateDraft}
                         onGenerateLlm={handleGenerateLlmDraft}
                         onSave={handleSaveDraft}
+                    />
+
+                    <InspectionReportsTab
+                        drafts={drafts}
+                        selectedDraft={selectedDraft}
+                        onSelectDraft={setSelectedDraftId}
+                        reportStatusQuery={{
+                            isLoading: reportStatusQuery.isLoading,
+                            data: reportStatusQuery.data ?? null,
+                        }}
+                        reportHistoryQuery={{
+                            isLoading: reportHistoryQuery.isLoading,
+                            data: reportHistoryQuery.data ?? null,
+                        }}
                     />
                 </TabsContent>
             </Tabs>

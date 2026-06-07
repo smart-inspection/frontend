@@ -173,9 +173,9 @@ export function InspectionReportsTab({
 
                             <CardContent>
                                 <div className="max-h-[560px] overflow-auto rounded-xl border bg-muted/30 p-4">
-                  <pre className="whitespace-pre-wrap text-sm leading-6 text-foreground">
-                    {selectedDraft.edited_text || selectedDraft.generated_text}
-                  </pre>
+                                    <pre className="whitespace-pre-wrap text-sm leading-6 text-foreground">
+                                        {selectedDraft.edited_text || selectedDraft.generated_text}
+                                    </pre>
                                 </div>
                             </CardContent>
                         </Card>

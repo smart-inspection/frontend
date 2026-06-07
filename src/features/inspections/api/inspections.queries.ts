@@ -279,7 +279,7 @@ export function useUpdateReportDraftMutation(inspectionId: number) {
     })
 }
 
-export function useUpdateReportStatusMutation(draftId: number) {
+export function useUpdateReportStatusMutation(draftId: number, inspectionId: number) {
     const queryClient = useQueryClient()
 
     return useMutation({
@@ -294,6 +294,9 @@ export function useUpdateReportStatusMutation(draftId: number) {
             })
             queryClient.invalidateQueries({
                 queryKey: inspectionsKeys.draft(draftId),
+            })
+            queryClient.invalidateQueries({
+                queryKey: inspectionsKeys.detail(inspectionId),
             })
         },
     })
