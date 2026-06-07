@@ -8,7 +8,13 @@ import InspectionsPage from "../features/inspections/pages/InspectionsPage"
 import InspectionDetailPage from "../features/inspections/pages/InspectionDetailPage"
 import { CreateInspectionPage as CreateInspectionPage } from "../features/inspections/pages/CreateInspectionPage"
 
+import { PublicInspectionRequestPage } from "@/features/requests/pages/public-inspection-request-page"
+
 export const router = createBrowserRouter([
+    {
+        path: "/solicitar",
+        element: <PublicInspectionRequestPage />,
+    },
     {
         path: "/",
         element: <AppShell />,
@@ -40,3 +46,5 @@ export const router = createBrowserRouter([
         ],
     },
 ])
+
+export default router
