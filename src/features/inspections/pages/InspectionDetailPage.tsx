@@ -68,6 +68,7 @@ import type {
     TranscriptionCreateInput,
 } from "../types/inspections.types"
 import { InspectionReportsTab } from "@/features/inspections/components/inspection-reports-tab"
+import {InspectionDetailHeader} from "@/features/inspections/components/inspection-detail-header";
 
 function InspectionDetailSkeleton() {
     return (
@@ -140,7 +141,7 @@ export default function InspectionDetailPage() {
 
     if (isInvalidInspectionId) {
         return (
-            <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
+            <section className="space-y-5">
                 <Card className="border-destructive/30">
                     <CardContent className="py-10 text-center">
                         <h2 className="text-lg font-semibold">Inspección no válida</h2>
@@ -281,7 +282,7 @@ export default function InspectionDetailPage() {
 
     if (inspectionQuery.isLoading) {
         return (
-            <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
+            <section className="space-y-5">
                 <InspectionDetailSkeleton />
             </section>
         )
@@ -294,7 +295,7 @@ export default function InspectionDetailPage() {
                 : "No se pudo cargar la inspección."
 
         return (
-            <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
+            <section className="space-y-5">
                 <Card className="border-destructive/30">
                     <CardContent className="py-10 text-center">
                         <h2 className="text-lg font-semibold text-destructive">
@@ -489,7 +490,7 @@ export default function InspectionDetailPage() {
     }
 
     return (
-        <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-4 md:px-6">
+        <section className="space-y-5">
             <header className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                     <Button asChild variant="ghost" size="sm">
@@ -541,35 +542,14 @@ export default function InspectionDetailPage() {
                 </Card>
             </header>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <Card size="sm" className="border-border/60 shadow-sm">
-                    <CardHeader>
-                        <CardDescription>Campos</CardDescription>
-                        <CardTitle>{fields.length}</CardTitle>
-                    </CardHeader>
-                </Card>
-
-                <Card size="sm" className="border-border/60 shadow-sm">
-                    <CardHeader>
-                        <CardDescription>Evidencias</CardDescription>
-                        <CardTitle>{evidences.length}</CardTitle>
-                    </CardHeader>
-                </Card>
-
-                <Card size="sm" className="border-border/60 shadow-sm">
-                    <CardHeader>
-                        <CardDescription>Transcripciones</CardDescription>
-                        <CardTitle>{transcriptions.length}</CardTitle>
-                    </CardHeader>
-                </Card>
-
-                <Card size="sm" className="border-border/60 shadow-sm">
-                    <CardHeader>
-                        <CardDescription>Campos observados</CardDescription>
-                        <CardTitle>{observedFields}</CardTitle>
-                    </CardHeader>
-                </Card>
-            </div>
+            <InspectionDetailHeader
+                inspection={inspection}
+                fieldsCount={fields.length}
+                evidencesCount={evidences.length}
+                transcriptionsCount={transcriptions.length}
+                draftsCount={drafts.length}
+                observedFieldsCount={observedFields}
+            />
 
             <Card className="border-border/60 shadow-sm">
                 <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
