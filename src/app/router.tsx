@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router-dom"
 import { AppShell } from "@/components/layout/app-shell"
-import { DashboardPage } from "@/features/dashboard/pages/dashboard-page"
+import { DashboardPage } from "@/features/dashboard/pages/DashboardPage"
 import { ReportsPage } from "@/features/reports/pages/reports-page"
 import { EvidencesPage } from "@/features/evidences/pages/evidences-page"
 
@@ -8,8 +8,8 @@ import InspectionsPage from "../features/inspections/pages/InspectionsPage"
 import InspectionDetailPage from "../features/inspections/pages/InspectionDetailPage"
 import { CreateInspectionPage as CreateInspectionPage } from "../features/inspections/pages/CreateInspectionPage"
 
-import { PublicInspectionRequestPage } from "@/features/requests/pages/public-inspection-request-page"
-import { InspectionRequestsPage } from "@/features/requests/pages/inspection-requests-page"
+import { PublicInspectionRequestPage } from "@/features/requests/pages/PublicInspectionRequestPage"
+import { InspectionRequestsPage } from "@/features/requests/pages/InspectionRequestsPage"
 
 export const router = createBrowserRouter([
     {
