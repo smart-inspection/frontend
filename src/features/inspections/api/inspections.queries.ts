@@ -21,7 +21,10 @@ import {
     updateReportDraft,
     updateReportStatus,
     updateTranscription,
-    validateInspectionOcr, updateInspectionField, convertInspectionRequest,
+    validateInspectionOcr,
+    updateInspectionField,
+    convertInspectionRequest,
+    startProductivity,
 } from "./inspections.api"
 
 import { inspectionsKeys } from "./inspections.keys"
@@ -138,6 +141,19 @@ export function useConvertInspectionRequestMutation() {
             inspectionRequestId: number
             payload: Parameters<typeof convertInspectionRequest>[1]
         }) => convertInspectionRequest(inspectionRequestId, payload),
+    })
+}
+
+export function useStartProductivityMutation(inspectionId: number) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: () => startProductivity(inspectionId),
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({
+                queryKey: inspectionsKeys.detail(inspectionId),
+            })
+        },
     })
 }
 

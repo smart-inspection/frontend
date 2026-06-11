@@ -47,6 +47,7 @@ import {
     useReportHistoryQuery,
     useReportStatusQuery,
     useRunEvidenceOcrMutation,
+    useStartProductivityMutation,
     useUpdateReportDraftMutation,
     useUpdateReportStatusMutation,
     useUpdateTranscriptionMutation,
@@ -134,6 +135,8 @@ export default function InspectionDetailPage() {
     const updateDraftMutation = useUpdateReportDraftMutation(inspectionId)
 
     const createFieldMutation = useCreateInspectionFieldMutation(inspectionId)
+
+    const startProductivityMutation = useStartProductivityMutation(inspectionId)
 
     if (isInvalidInspectionId) {
         return (
@@ -248,6 +251,20 @@ export default function InspectionDetailPage() {
         currentReportStatus === "in_review"
             ? liveElapsedMs > REPORT_GOAL_MINUTES * 60 * 1000
             : reportDurationMinutes !== null && reportDurationMinutes > REPORT_GOAL_MINUTES
+
+    const isStartingReport =
+        startProductivityMutation.isPending || updateReportStatusMutation.isPending
+
+    const canStartReport =
+        inspectionId > 0 &&
+        !isStartingReport &&
+        currentReportStatus !== "inreview" &&
+        currentReportStatus !== "finalized"
+
+    const canFinishReport =
+        Boolean(selectedDraft) &&
+        !isStartingReport &&
+        currentReportStatus === "inreview"
 
     useEffect(() => {
         if (!drafts.length) {
@@ -385,25 +402,28 @@ export default function InspectionDetailPage() {
     }
 
     const handleStartReport = async () => {
-        if (!selectedDraft) return
-
         const startedAt = new Date().toISOString()
 
-        setOptimisticStatus("in_review")
+        setOptimisticStatus("inreview")
         setOptimisticStartedAt(startedAt)
         setOptimisticFinishedAt(null)
 
         try {
-            await updateReportStatusMutation.mutateAsync({
-                status: "in_review",
-                notes: "Informe iniciado desde el detalle de inspección",
-            })
+            if (selectedDraft) {
+                await updateReportStatusMutation.mutateAsync({
+                    status: "inreview",
+                    notes: "Informe iniciado desde el detalle de inspección",
+                })
 
-            await Promise.all([
-                reportStatusQuery.refetch(),
-                reportHistoryQuery.refetch(),
-                draftsQuery.refetch(),
-            ])
+                await Promise.all([
+                    reportStatusQuery.refetch(),
+                    reportHistoryQuery.refetch(),
+                    draftsQuery.refetch(),
+                ])
+            } else {
+                await startProductivityMutation.mutateAsync()
+                await inspectionQuery.refetch()
+            }
 
             setOptimisticStatus(null)
             setOptimisticStartedAt(null)
@@ -567,27 +587,15 @@ export default function InspectionDetailPage() {
                         <Button
                             variant="outline"
                             onClick={handleStartReport}
-                            disabled={
-                                !selectedDraft ||
-                                updateReportStatusMutation.isPending ||
-                                currentReportStatus === "in_review" ||
-                                currentReportStatus === "finalized"
-                            }
+                            disabled={!canStartReport}
                         >
                             <PlayCircle className="h-4 w-4" />
-                            Iniciar informe
+                            {isStartingReport ? "Iniciando..." : "Iniciar informe"}
                         </Button>
 
-                        <Button
-                            onClick={handleFinishReport}
-                            disabled={
-                                !selectedDraft ||
-                                updateReportStatusMutation.isPending ||
-                                currentReportStatus !== "in_review"
-                            }
-                        >
+                        <Button onClick={handleFinishReport} disabled={!canFinishReport}>
                             <CheckCircle2 className="h-4 w-4" />
-                            Finalizar informe
+                            {updateReportStatusMutation.isPending ? "Finalizando..." : "Finalizar informe"}
                         </Button>
                     </div>
                 </CardHeader>

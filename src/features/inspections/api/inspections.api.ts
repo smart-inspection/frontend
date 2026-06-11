@@ -321,6 +321,12 @@ export async function convertInspectionRequest(
     )
 }
 
+export async function startProductivity(inspectionId: number): Promise<void> {
+    await apiPatch(`productivity/inspection/${inspectionId}/start`, {
+        reportstartedat: new Date().toISOString(),
+    })
+}
+
 export async function getInspectionFields(
     inspectionId: number,
 ): Promise<InspectionField[]> {
