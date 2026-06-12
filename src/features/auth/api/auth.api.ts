@@ -28,7 +28,7 @@ function map_current_user(raw: unknown): CurrentUser {
 
     return {
         id: as_number(data?.id),
-        full_name: as_string(data?.fullname),
+        full_name: as_string(data?.full_name),
         email: as_string(data?.email),
         role: as_string(data?.role, "viewer") as CurrentUser["role"],
         is_active: as_boolean(data?.is_active, true),

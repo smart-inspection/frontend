@@ -9,6 +9,8 @@ import {
     Menu,
 } from "lucide-react"
 
+import { ShieldCheck } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import {
     Sheet,
@@ -61,6 +63,12 @@ const NAV_ITEMS: NavItem[] = [
         label: "Informes",
         icon: FileText,
         roles: ["admin", "viewer"],
+    },
+    {
+        to: "/admin/users",
+        label: "Usuarios",
+        icon: ShieldCheck,
+        roles: ["admin"],
     },
 ]
 

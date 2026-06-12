@@ -1,4 +1,4 @@
-import {createBrowserRouter, Navigate, Outlet} from "react-router-dom"
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom"
 import { AppShell } from "@/components/layout/app-shell"
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage"
 import { ReportsPage } from "@/features/reports/pages/reports-page"
@@ -11,7 +11,8 @@ import { CreateInspectionPage as CreateInspectionPage } from "../features/inspec
 import { PublicInspectionRequestPage } from "@/features/requests/pages/PublicInspectionRequestPage"
 import { InspectionRequestsPage } from "@/features/requests/pages/InspectionRequestsPage"
 import LoginPage from "@/features/auth/pages/LoginPage";
-import {auth_storage} from "@/features/auth/lib/auth.storage";
+import { auth_storage } from "@/features/auth/lib/auth.storage";
+import AdminUsersPage from "@/features/admin/pages/AdminUsersPage";
 
 function RequireAuth() {
     if (!auth_storage.is_authenticated()) {
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
                     { path: "inspections/:inspectionId", element: <InspectionDetailPage /> },
                     { path: "evidences", element: <EvidencesPage /> },
                     { path: "reports", element: <ReportsPage /> },
+                    { path: "admin/users", element: <AdminUsersPage /> },
                 ],
             },
         ],
