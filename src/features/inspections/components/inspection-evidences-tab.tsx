@@ -1,6 +1,7 @@
-import { useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
     Camera,
+    Check,
     ExternalLink,
     FileImage,
     FileText,
@@ -41,10 +42,26 @@ type InspectionEvidencesTabProps = {
     onExtract: (evidenceId: number) => Promise<void> | void
 }
 
+const QUICK_CATEGORIES = [
+    { value: "general", label: "General" },
+    { value: "placa", label: "Placa" },
+    { value: "serie", label: "Serie" },
+    { value: "tablero", label: "Tablero" },
+    { value: "daño", label: "Daño" },
+    { value: "vin", label: "VIN" },
+]
+
 function formatFileSize(size: number) {
     if (size < 1024) return `${size} B`
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
     return `${(size / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function getSourceLabel(source: "camera" | "gallery" | "file" | null) {
+    if (source === "camera") return "Capturada desde cámara"
+    if (source === "gallery") return "Elegida desde galería"
+    if (source === "file") return "Adjuntada como archivo"
+    return "Sin selección"
 }
 
 export function InspectionEvidencesTab({
@@ -58,6 +75,7 @@ export function InspectionEvidencesTab({
                                            onExtract,
                                        }: InspectionEvidencesTabProps) {
     const [file, setFile] = useState<File | null>(null)
+    const [source, setSource] = useState<"camera" | "gallery" | "file" | null>(null)
     const [evidenceCategory, setEvidenceCategory] = useState("general")
     const [caption, setCaption] = useState("")
     const [axleNumber, setAxleNumber] = useState("")
@@ -68,19 +86,27 @@ export function InspectionEvidencesTab({
     const imageInputRef = useRef<HTMLInputElement | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-    const handlePickedFile = (nextFile: File | null) => {
-        if (!nextFile) return
-        setFile(nextFile)
+    const previewUrl = useMemo(() => {
+        if (!file || !file.type.startsWith("image/")) return null
+        return URL.createObjectURL(file)
+    }, [file])
 
-        if (!caption.trim()) {
-            setCaption(nextFile.type.startsWith("image/") ? "Captura de evidencia" : nextFile.name)
+    useEffect(() => {
+        return () => {
+            if (previewUrl) URL.revokeObjectURL(previewUrl)
         }
-    }
+    }, [previewUrl])
+
+    const orderedEvidences = useMemo(
+        () => [...evidences].sort((a, b) => b.id - a.id),
+        [evidences],
+    )
 
     const resetForm = () => {
         setFile(null)
-        setCaption("")
+        setSource(null)
         setEvidenceCategory("general")
+        setCaption("")
         setAxleNumber("")
         setSide("")
         setIsReference(false)
@@ -88,6 +114,26 @@ export function InspectionEvidencesTab({
         if (cameraInputRef.current) cameraInputRef.current.value = ""
         if (imageInputRef.current) imageInputRef.current.value = ""
         if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+
+    const handlePickedFile = (
+        nextFile: File | null,
+        nextSource: "camera" | "gallery" | "file",
+    ) => {
+        if (!nextFile) return
+
+        setFile(nextFile)
+        setSource(nextSource)
+
+        if (!caption.trim()) {
+            if (nextSource === "camera") {
+                setCaption("Foto capturada en inspección")
+            } else if (nextFile.type.startsWith("image/")) {
+                setCaption("Imagen de evidencia")
+            } else {
+                setCaption(nextFile.name)
+            }
+        }
     }
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -122,7 +168,7 @@ export function InspectionEvidencesTab({
                                 Cargar evidencia
                             </CardTitle>
                             <CardDescription>
-                                En móvil, prioriza captura rápida desde cámara antes de adjuntar archivos.
+                                Captura, revisa y registra evidencia desde móvil con menos pasos.
                             </CardDescription>
                         </div>
 
@@ -133,7 +179,6 @@ export function InspectionEvidencesTab({
                     <div className="grid gap-3 md:grid-cols-3">
                         <Button
                             type="button"
-                            variant="default"
                             className="w-full"
                             onClick={() => cameraInputRef.current?.click()}
                         >
@@ -168,7 +213,9 @@ export function InspectionEvidencesTab({
                         accept="image/*"
                         capture="environment"
                         className="hidden"
-                        onChange={(e) => handlePickedFile(e.target.files?.[0] ?? null)}
+                        onChange={(event) =>
+                            handlePickedFile(event.target.files?.[0] ?? null, "camera")
+                        }
                     />
 
                     <input
@@ -176,7 +223,9 @@ export function InspectionEvidencesTab({
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => handlePickedFile(e.target.files?.[0] ?? null)}
+                        onChange={(event) =>
+                            handlePickedFile(event.target.files?.[0] ?? null, "gallery")
+                        }
                     />
 
                     <input
@@ -184,29 +233,73 @@ export function InspectionEvidencesTab({
                         type="file"
                         accept="image/*,application/pdf"
                         className="hidden"
-                        onChange={(e) => handlePickedFile(e.target.files?.[0] ?? null)}
+                        onChange={(event) =>
+                            handlePickedFile(event.target.files?.[0] ?? null, "file")
+                        }
                     />
 
                     <div className="rounded-xl border bg-muted/30 p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                            Archivo seleccionado
-                        </p>
-                        <p className="mt-1 text-sm font-medium">
-                            {file ? file.name : "Aún no seleccionaste ninguna evidencia"}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            {file ? `${file.type || "Tipo no disponible"} · ${formatFileSize(file.size)}` : "Puedes capturar desde cámara o adjuntar una imagen/archivo"}
-                        </p>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                    Evidencia seleccionada
+                                </p>
+                                <p className="mt-1 text-sm font-medium">
+                                    {file ? file.name : "Aún no seleccionaste ninguna evidencia"}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {file
+                                        ? `${file.type || "Tipo no disponible"} · ${formatFileSize(file.size)}`
+                                        : "Usa la cámara o adjunta una imagen para continuar"}
+                                </p>
+                            </div>
+
+                            <Badge variant={file ? "default" : "outline"}>
+                                {getSourceLabel(source)}
+                            </Badge>
+                        </div>
+
+                        {previewUrl ? (
+                            <div className="mt-3 overflow-hidden rounded-lg border bg-background">
+                                <img
+                                    src={previewUrl}
+                                    alt={caption || file?.name || "Vista previa de evidencia"}
+                                    className="h-56 w-full object-cover"
+                                />
+                            </div>
+                        ) : null}
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Categoría rápida</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {QUICK_CATEGORIES.map((category) => {
+                                    const isActive = evidenceCategory === category.value
+
+                                    return (
+                                        <Button
+                                            key={category.value}
+                                            type="button"
+                                            size="sm"
+                                            variant={isActive ? "default" : "outline"}
+                                            onClick={() => setEvidenceCategory(category.value)}
+                                        >
+                                            {isActive ? <Check className="h-3.5 w-3.5" /> : null}
+                                            {category.label}
+                                        </Button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
                         <div className="grid gap-3 md:grid-cols-2">
                             <div className="space-y-2">
                                 <Label htmlFor="evidence-category">Categoría</Label>
                                 <Input
                                     id="evidence-category"
                                     value={evidenceCategory}
-                                    onChange={(e) => setEvidenceCategory(e.target.value)}
+                                    onChange={(event) => setEvidenceCategory(event.target.value)}
                                     placeholder="placa, serie, tablero, daño, general"
                                 />
                             </div>
@@ -216,59 +309,67 @@ export function InspectionEvidencesTab({
                                 <Input
                                     id="evidence-caption"
                                     value={caption}
-                                    onChange={(e) => setCaption(e.target.value)}
+                                    onChange={(event) => setCaption(event.target.value)}
                                     placeholder="Foto lateral del equipo"
                                 />
                             </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="evidence-axle-number">N° de eje</Label>
-                                <Input
-                                    id="evidence-axle-number"
-                                    type="number"
-                                    min="1"
-                                    value={axleNumber}
-                                    onChange={(e) => setAxleNumber(e.target.value)}
-                                    placeholder="1"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="evidence-side">Lado</Label>
-                                <select
-                                    id="evidence-side"
-                                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
-                                    value={side}
-                                    onChange={(e) => setSide(e.target.value)}
-                                >
-                                    <option value="">Sin lado</option>
-                                    <option value="left">Izquierdo</option>
-                                    <option value="right">Derecho</option>
-                                    <option value="center">Centro</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="evidence-notes">Observación</Label>
-                                <Textarea
-                                    id="evidence-notes"
-                                    value={caption}
-                                    onChange={(e) => setCaption(e.target.value)}
-                                    placeholder="Describe brevemente la evidencia capturada"
-                                    className="min-h-24"
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-2 md:col-span-2">
-                                <input
-                                    id="evidence-is-reference"
-                                    type="checkbox"
-                                    checked={isReference}
-                                    onChange={(e) => setIsReference(e.target.checked)}
-                                />
-                                <Label htmlFor="evidence-is-reference">Es referencia</Label>
-                            </div>
                         </div>
+
+                        <details className="rounded-xl border bg-muted/20 p-3">
+                            <summary className="cursor-pointer text-sm font-medium">
+                                Metadatos opcionales
+                            </summary>
+
+                            <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="evidence-axle-number">N° de eje</Label>
+                                    <Input
+                                        id="evidence-axle-number"
+                                        type="number"
+                                        min="1"
+                                        value={axleNumber}
+                                        onChange={(event) => setAxleNumber(event.target.value)}
+                                        placeholder="1"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="evidence-side">Lado</Label>
+                                    <select
+                                        id="evidence-side"
+                                        className="h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                                        value={side}
+                                        onChange={(event) => setSide(event.target.value)}
+                                    >
+                                        <option value="">Sin lado</option>
+                                        <option value="left">Izquierdo</option>
+                                        <option value="right">Derecho</option>
+                                        <option value="center">Centro</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="evidence-notes">Observación</Label>
+                                    <Textarea
+                                        id="evidence-notes"
+                                        value={caption}
+                                        onChange={(event) => setCaption(event.target.value)}
+                                        placeholder="Describe brevemente la evidencia capturada"
+                                        className="min-h-24"
+                                    />
+                                </div>
+
+                                <div className="flex items-center gap-2 md:col-span-2">
+                                    <input
+                                        id="evidence-is-reference"
+                                        type="checkbox"
+                                        checked={isReference}
+                                        onChange={(event) => setIsReference(event.target.checked)}
+                                    />
+                                    <Label htmlFor="evidence-is-reference">Es referencia</Label>
+                                </div>
+                            </div>
+                        </details>
 
                         {uploadError ? (
                             <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -277,7 +378,12 @@ export function InspectionEvidencesTab({
                         ) : null}
 
                         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                            <Button type="button" variant="outline" onClick={resetForm} disabled={isUploading}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={resetForm}
+                                disabled={isUploading}
+                            >
                                 Limpiar
                             </Button>
 
@@ -289,7 +395,7 @@ export function InspectionEvidencesTab({
                 </CardContent>
             </Card>
 
-            {!evidences.length ? (
+            {!orderedEvidences.length ? (
                 <Card className="border-dashed">
                     <CardContent className="py-10 text-center text-sm text-muted-foreground">
                         Todavía no hay evidencias cargadas para esta inspección.
@@ -298,22 +404,34 @@ export function InspectionEvidencesTab({
             ) : null}
 
             <div className="grid gap-4 lg:grid-cols-2">
-                {evidences.map((evidence) => {
+                {orderedEvidences.map((evidence) => {
                     const isImage = evidence.file_type?.startsWith("image/")
-                    const fileUrl = resolveBackendFileUrl(evidence.file_url ?? evidence.file_path)
+                    const fileUrl = resolveBackendFileUrl(
+                        evidence.file_url ?? evidence.file_path,
+                    )
 
                     return (
                         <Card key={evidence.id} className="border-border/60 shadow-sm">
                             <CardHeader className="space-y-3">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="space-y-1">
-                                        <CardTitle className="text-base">Evidencia #{evidence.id}</CardTitle>
-                                        <CardDescription>{evidence.evidence_category}</CardDescription>
+                                        <CardTitle className="text-base">
+                                            Evidencia #{evidence.id}
+                                        </CardTitle>
+                                        <CardDescription>
+                                            {evidence.evidence_category}
+                                        </CardDescription>
                                     </div>
 
-                                    <Badge variant={evidence.ocr_processed ? "default" : "outline"}>
-                                        {evidence.ocr_processed ? "OCR procesado" : "OCR pendiente"}
-                                    </Badge>
+                                    <div className="flex flex-wrap gap-2">
+                                        {evidence.is_reference ? (
+                                            <Badge variant="secondary">Referencia</Badge>
+                                        ) : null}
+
+                                        <Badge variant={evidence.ocr_processed ? "default" : "outline"}>
+                                            {evidence.ocr_processed ? "OCR procesado" : "OCR pendiente"}
+                                        </Badge>
+                                    </div>
                                 </div>
                             </CardHeader>
 
@@ -344,14 +462,18 @@ export function InspectionEvidencesTab({
                                             {evidence.caption || "Sin descripción"}
                                         </p>
                                         <p>
+                                            <span className="font-medium text-foreground">Lado:</span>{" "}
+                                            {evidence.side || "Sin lado"}
+                                        </p>
+                                        <p>
+                                            <span className="font-medium text-foreground">N° eje:</span>{" "}
+                                            {evidence.axle_number ?? "Sin dato"}
+                                        </p>
+                                        <p>
                                             <span className="font-medium text-foreground">Confianza OCR:</span>{" "}
                                             {typeof evidence.ocr_confidence === "number"
                                                 ? `${Math.round(evidence.ocr_confidence * 100)}%`
                                                 : "Sin dato"}
-                                        </p>
-                                        <p>
-                                            <span className="font-medium text-foreground">Lado:</span>{" "}
-                                            {evidence.side || "Sin lado"}
                                         </p>
                                     </div>
                                 </div>
@@ -374,7 +496,9 @@ export function InspectionEvidencesTab({
                                         disabled={runningEvidenceId === evidence.id}
                                     >
                                         <ScanSearch className="h-4 w-4" />
-                                        {runningEvidenceId === evidence.id ? "Procesando OCR..." : "Ejecutar OCR"}
+                                        {runningEvidenceId === evidence.id
+                                            ? "Procesando OCR..."
+                                            : "Ejecutar OCR"}
                                     </Button>
 
                                     <Button
@@ -384,7 +508,9 @@ export function InspectionEvidencesTab({
                                         disabled={extractingEvidenceId === evidence.id}
                                     >
                                         <ScanSearch className="h-4 w-4" />
-                                        {extractingEvidenceId === evidence.id ? "Extrayendo..." : "Extraer texto"}
+                                        {extractingEvidenceId === evidence.id
+                                            ? "Extrayendo..."
+                                            : "Extraer texto"}
                                     </Button>
 
                                     <Button asChild variant="ghost">
