@@ -4,7 +4,6 @@ import {
     Check,
     ExternalLink,
     FileImage,
-    FileText,
     ImagePlus,
     Paperclip,
     ScanSearch,
@@ -64,6 +63,10 @@ function getSourceLabel(source: "camera" | "gallery" | "file" | null) {
     return "Sin selección"
 }
 
+function is_image_evidence(file_type?: string | null) {
+    return Boolean(file_type?.toLowerCase().startsWith("image/"))
+}
+
 export function InspectionEvidencesTab({
                                            evidences,
                                            isUploading,
@@ -97,8 +100,11 @@ export function InspectionEvidencesTab({
         }
     }, [previewUrl])
 
-    const orderedEvidences = useMemo(
-        () => [...evidences].sort((a, b) => b.id - a.id),
+    const orderedImageEvidences = useMemo(
+        () =>
+            [...evidences]
+                .filter((item) => is_image_evidence(item.file_type))
+                .sort((a, b) => b.id - a.id),
         [evidences],
     )
 
@@ -121,6 +127,7 @@ export function InspectionEvidencesTab({
         nextSource: "camera" | "gallery" | "file",
     ) => {
         if (!nextFile) return
+        if (!nextFile.type.startsWith("image/")) return
 
         setFile(nextFile)
         setSource(nextSource)
@@ -168,10 +175,9 @@ export function InspectionEvidencesTab({
                                 Cargar evidencia
                             </CardTitle>
                             <CardDescription>
-                                Captura, revisa y registra evidencia desde móvil con menos pasos.
+                                Aquí solo se registran evidencias visuales.
                             </CardDescription>
                         </div>
-
                     </div>
                 </CardHeader>
 
@@ -203,7 +209,7 @@ export function InspectionEvidencesTab({
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <Paperclip className="h-4 w-4" />
-                            Adjuntar archivo
+                            Adjuntar imagen
                         </Button>
                     </div>
 
@@ -231,7 +237,7 @@ export function InspectionEvidencesTab({
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*,application/pdf"
+                        accept="image/*"
                         className="hidden"
                         onChange={(event) =>
                             handlePickedFile(event.target.files?.[0] ?? null, "file")
@@ -245,7 +251,7 @@ export function InspectionEvidencesTab({
                                     Evidencia seleccionada
                                 </p>
                                 <p className="mt-1 text-sm font-medium">
-                                    {file ? file.name : "Aún no seleccionaste ninguna evidencia"}
+                                    {file ? file.name : "Aún no seleccionaste ninguna imagen"}
                                 </p>
                                 <p className="mt-1 text-xs text-muted-foreground">
                                     {file
@@ -395,17 +401,16 @@ export function InspectionEvidencesTab({
                 </CardContent>
             </Card>
 
-            {!orderedEvidences.length ? (
+            {!orderedImageEvidences.length ? (
                 <Card className="border-dashed">
                     <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                        Todavía no hay evidencias cargadas para esta inspección.
+                        Todavía no hay evidencias visuales cargadas para esta inspección.
                     </CardContent>
                 </Card>
             ) : null}
 
             <div className="grid gap-4 lg:grid-cols-2">
-                {orderedEvidences.map((evidence) => {
-                    const isImage = evidence.file_type?.startsWith("image/")
+                {orderedImageEvidences.map((evidence) => {
                     const fileUrl = resolveBackendFileUrl(
                         evidence.file_url ?? evidence.file_path,
                     )
@@ -437,20 +442,14 @@ export function InspectionEvidencesTab({
 
                             <CardContent className="space-y-4">
                                 <div className="grid gap-3 md:grid-cols-2">
-                                    {isImage ? (
-                                        <div className="overflow-hidden rounded-lg border bg-muted/20">
-                                            <img
-                                                src={fileUrl}
-                                                alt={evidence.caption ?? `Evidencia ${evidence.id}`}
-                                                className="h-52 w-full object-cover"
-                                                loading="lazy"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="flex h-32 items-center justify-center rounded-lg border border-dashed bg-muted/20 text-sm text-muted-foreground">
-                                            Vista previa no disponible
-                                        </div>
-                                    )}
+                                    <div className="overflow-hidden rounded-lg border bg-muted/20">
+                                        <img
+                                            src={fileUrl}
+                                            alt={evidence.caption ?? `Evidencia ${evidence.id}`}
+                                            className="h-52 w-full object-cover"
+                                            loading="lazy"
+                                        />
+                                    </div>
 
                                     <div className="grid gap-2 text-sm text-muted-foreground">
                                         <p>
@@ -509,8 +508,8 @@ export function InspectionEvidencesTab({
                                     >
                                         <ScanSearch className="h-4 w-4" />
                                         {extractingEvidenceId === evidence.id
-                                            ? "Extrayendo..."
-                                            : "Extraer texto"}
+                                            ? "Extrayendo OCR..."
+                                            : "Extraer OCR"}
                                     </Button>
 
                                     <Button asChild variant="ghost">
@@ -522,11 +521,7 @@ export function InspectionEvidencesTab({
                                 </div>
 
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    {isImage ? (
-                                        <FileImage className="h-4 w-4 shrink-0" />
-                                    ) : (
-                                        <FileText className="h-4 w-4 shrink-0" />
-                                    )}
+                                    <FileImage className="h-4 w-4 shrink-0" />
                                     <span className="truncate">{evidence.file_path}</span>
                                 </div>
                             </CardContent>
