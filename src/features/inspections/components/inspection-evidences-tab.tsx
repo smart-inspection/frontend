@@ -75,10 +75,10 @@ export function InspectionEvidencesTab({
     }
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-4">
             <Card className="border-border/60 shadow-sm">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 sm:flex-row">
                         <Upload className="h-4 w-4" />
                         Cargar evidencia
                     </CardTitle>
@@ -145,7 +145,7 @@ export function InspectionEvidencesTab({
                             </select>
                         </div>
 
-                        <div className="md:col-span-2 flex items-center gap-2">
+                        <div className="md:col-span-2 flex items-center gap-2 sm:flex-row">
                             <input
                                 id="evidence-is-reference"
                                 type="checkbox"
@@ -186,66 +186,70 @@ export function InspectionEvidencesTab({
                     return (
                         <Card key={evidence.id} className="border-border/60 shadow-sm">
                             <CardHeader className="space-y-3">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="space-y-1">
-                                        <CardTitle className="text-base">
-                                            Evidencia #{evidence.id}
-                                        </CardTitle>
-                                        <CardDescription>
-                                            {evidence.evidence_category}
-                                        </CardDescription>
-                                    </div>
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="space-y-1">
+                                            <CardTitle className="text-base">
+                                                Evidencia #{evidence.id}
+                                            </CardTitle>
+                                            <CardDescription>
+                                                {evidence.evidence_category}
+                                            </CardDescription>
+                                        </div>
 
-                                    <Badge variant={evidence.ocr_processed ? "default" : "outline"}>
-                                        {evidence.ocr_processed ? "OCR procesado" : "OCR pendiente"}
-                                    </Badge>
+                                        <Badge variant={evidence.ocr_processed ? "default" : "outline"}>
+                                            {evidence.ocr_processed ? "OCR procesado" : "OCR pendiente"}
+                                        </Badge>
+                                    </div>
                                 </div>
                             </CardHeader>
 
                             <CardContent className="space-y-4">
-                                {isImage ? (
-                                    <div className="overflow-hidden rounded-lg border bg-muted/20">
-                                        <img
-                                            src={fileUrl}
-                                            alt={evidence.caption || `Evidencia ${evidence.id}`}
-                                            className="h-52 w-full object-cover"
-                                            loading="lazy"
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    {isImage ? (
+                                        <div className="overflow-hidden rounded-lg border bg-muted/20">
+                                            <img
+                                                src={fileUrl}
+                                                alt={evidence.caption || `Evidencia ${evidence.id}`}
+                                                className="h-52 w-full object-cover"
+                                                loading="lazy"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="flex h-32 items-center justify-center rounded-lg border border-dashed bg-muted/20 text-sm text-muted-foreground">
+                                            Vista previa no disponible
+                                        </div>
+                                    )}
+
+                                    <div className="grid gap-2 text-sm text-muted-foreground">
+                                        <p>
+                                            <span className="font-medium text-foreground">Tipo:</span>{" "}
+                                            {evidence.file_type}
+                                        </p>
+                                        <p>
+                                            <span className="font-medium text-foreground">Descripción:</span>{" "}
+                                            {evidence.caption || "Sin descripción"}
+                                        </p>
+                                        <p>
+                                            <span className="font-medium text-foreground">Confianza OCR:</span>{" "}
+                                            {typeof evidence.ocr_confidence === "number"
+                                                ? `${Math.round(evidence.ocr_confidence * 100)}%`
+                                                : "Sin dato"}
+                                        </p>
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label>Texto OCR</Label>
+                                        <Textarea
+                                            readOnly
+                                            value={evidence.ocr_extracted_text || ""}
+                                            placeholder="El texto extraído por OCR aparecerá aquí."
+                                            className="min-h-28"
                                         />
                                     </div>
-                                ) : (
-                                    <div className="flex h-32 items-center justify-center rounded-lg border border-dashed bg-muted/20 text-sm text-muted-foreground">
-                                        Vista previa no disponible
-                                    </div>
-                                )}
-
-                                <div className="grid gap-2 text-sm text-muted-foreground">
-                                    <p>
-                                        <span className="font-medium text-foreground">Tipo:</span>{" "}
-                                        {evidence.file_type}
-                                    </p>
-                                    <p>
-                                        <span className="font-medium text-foreground">Descripción:</span>{" "}
-                                        {evidence.caption || "Sin descripción"}
-                                    </p>
-                                    <p>
-                                        <span className="font-medium text-foreground">Confianza OCR:</span>{" "}
-                                        {typeof evidence.ocr_confidence === "number"
-                                            ? `${Math.round(evidence.ocr_confidence * 100)}%`
-                                            : "Sin dato"}
-                                    </p>
                                 </div>
 
-                                <div className="grid gap-2">
-                                    <Label>Texto OCR</Label>
-                                    <Textarea
-                                        readOnly
-                                        value={evidence.ocr_extracted_text || ""}
-                                        placeholder="El texto extraído por OCR aparecerá aquí."
-                                        className="min-h-28"
-                                    />
-                                </div>
-
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                                     <Button
                                         type="button"
                                         variant="outline"
@@ -270,7 +274,7 @@ export function InspectionEvidencesTab({
                                     </Button>
                                 </div>
 
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-2 sm:flex-row text-xs text-muted-foreground">
                                     {isImage ? (
                                         <FileImage className="h-4 w-4" />
                                     ) : (

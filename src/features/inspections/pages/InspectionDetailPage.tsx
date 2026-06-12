@@ -640,27 +640,33 @@ export default function InspectionDetailPage() {
                 </CardContent>
             </Card>
 
-            <Tabs defaultValue="fields" className="gap-5">
-                <TabsList variant="line" className="w-full justify-start overflow-x-auto">
-                    <TabsTrigger value="fields">
+            <Tabs defaultValue="fields" className="gap-4">
+                <TabsList
+                    variant="line"
+                    className="flex w-full justify-start gap-1 overflow-x-auto whitespace-nowrap rounded-none border-b pb-1"
+                >
+                    <TabsTrigger value="fields" className="shrink-0 px-3">
                         <ShieldCheck className="h-4 w-4" />
-                        Campos
+                        <span>Campos</span>
                     </TabsTrigger>
-                    <TabsTrigger value="evidences">
+
+                    <TabsTrigger value="evidences" className="shrink-0 px-3">
                         <FolderOpen className="h-4 w-4" />
-                        Evidencias
+                        <span>Evidencias</span>
                     </TabsTrigger>
-                    <TabsTrigger value="transcriptions">
+
+                    <TabsTrigger value="transcriptions" className="shrink-0 px-3">
                         <Languages className="h-4 w-4" />
-                        Transcripciones
+                        <span>Transcripciones</span>
                     </TabsTrigger>
-                    <TabsTrigger value="drafts">
+
+                    <TabsTrigger value="drafts" className="shrink-0 px-3">
                         <FileText className="h-4 w-4" />
-                        Informes
+                        <span>Informes</span>
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="fields">
+                <TabsContent value="fields" className="space-y-4">
                     <InspectionFieldsTab
                         inspectionId={inspectionId}
                         fields={fields}
@@ -677,7 +683,7 @@ export default function InspectionDetailPage() {
                     />
                 </TabsContent>
 
-                <TabsContent value="evidences">
+                <TabsContent value="evidences" className="space-y-4">
                     <InspectionEvidencesTab
                         evidences={evidences}
                         isUploading={createEvidenceMutation.isPending}
@@ -694,7 +700,7 @@ export default function InspectionDetailPage() {
                     />
                 </TabsContent>
 
-                <TabsContent value="transcriptions">
+                <TabsContent value="transcriptions" className="space-y-4">
                     <InspectionTranscriptionsTab
                         evidences={evidences}
                         transcriptions={transcriptions}
@@ -716,42 +722,44 @@ export default function InspectionDetailPage() {
                     />
                 </TabsContent>
 
-                <TabsContent value="drafts">
-                    <InspectionDraftsTab
-                        drafts={drafts}
-                        isGenerating={generateDraftMutation.isPending}
-                        isGeneratingLlm={generateLlmDraftMutation.isPending}
-                        savingDraftId={savingDraftId}
-                        generateError={
-                            generateDraftMutation.error instanceof Error
-                                ? generateDraftMutation.error.message
-                                : generateLlmDraftMutation.error instanceof Error
-                                    ? generateLlmDraftMutation.error.message
+                <TabsContent value="drafts" className="space-y-4">
+                    <div className="space-y-4">
+                        <InspectionDraftsTab
+                            drafts={drafts}
+                            isGenerating={generateDraftMutation.isPending}
+                            isGeneratingLlm={generateLlmDraftMutation.isPending}
+                            savingDraftId={savingDraftId}
+                            generateError={
+                                generateDraftMutation.error instanceof Error
+                                    ? generateDraftMutation.error.message
+                                    : generateLlmDraftMutation.error instanceof Error
+                                        ? generateLlmDraftMutation.error.message
+                                        : null
+                            }
+                            saveError={
+                                updateDraftMutation.error instanceof Error
+                                    ? updateDraftMutation.error.message
                                     : null
-                        }
-                        saveError={
-                            updateDraftMutation.error instanceof Error
-                                ? updateDraftMutation.error.message
-                                : null
-                        }
-                        onGenerate={handleGenerateDraft}
-                        onGenerateLlm={handleGenerateLlmDraft}
-                        onSave={handleSaveDraft}
-                    />
+                            }
+                            onGenerate={handleGenerateDraft}
+                            onGenerateLlm={handleGenerateLlmDraft}
+                            onSave={handleSaveDraft}
+                        />
 
-                    <InspectionReportsTab
-                        drafts={drafts}
-                        selectedDraft={selectedDraft}
-                        onSelectDraft={setSelectedDraftId}
-                        reportStatusQuery={{
-                            isLoading: reportStatusQuery.isLoading,
-                            data: reportStatusQuery.data ?? null,
-                        }}
-                        reportHistoryQuery={{
-                            isLoading: reportHistoryQuery.isLoading,
-                            data: reportHistoryQuery.data ?? null,
-                        }}
-                    />
+                        <InspectionReportsTab
+                            drafts={drafts}
+                            selectedDraft={selectedDraft}
+                            onSelectDraft={setSelectedDraftId}
+                            reportStatusQuery={{
+                                isLoading: reportStatusQuery.isLoading,
+                                data: reportStatusQuery.data ?? null,
+                            }}
+                            reportHistoryQuery={{
+                                isLoading: reportHistoryQuery.isLoading,
+                                data: reportHistoryQuery.data ?? null,
+                            }}
+                        />
+                    </div>
                 </TabsContent>
             </Tabs>
 

@@ -81,7 +81,7 @@ export function InspectionTranscriptionsTab({
     }
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-4">
             <Card className="border-border/60 shadow-sm">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -193,7 +193,7 @@ export function InspectionTranscriptionsTab({
                     return (
                         <Card key={transcription.id} className="border-border/60 shadow-sm">
                             <CardHeader className="space-y-3">
-                                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="space-y-1">
                                         <CardTitle className="text-base">
                                             Transcripción #{transcription.id}
@@ -215,58 +215,62 @@ export function InspectionTranscriptionsTab({
                                 </div>
                             </CardHeader>
 
-                            <CardContent className="grid gap-4 xl:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label>Texto bruto</Label>
-                                    <Textarea
-                                        readOnly
-                                        value={transcription.raw_text || ""}
-                                        placeholder="El contenido bruto aparecerá aquí."
-                                        className="min-h-36"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor={`transcription-final-${transcription.id}`}>
-                                        Texto final editable
-                                    </Label>
-                                    <Textarea
-                                        id={`transcription-final-${transcription.id}`}
-                                        value={currentValue}
-                                        onChange={(e) =>
-                                            setDraftTexts((prev) => ({
-                                                ...prev,
-                                                [transcription.id]: e.target.value,
-                                            }))
-                                        }
-                                        className="min-h-36"
-                                    />
-                                </div>
-
-                                <div className="xl:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div className="grid gap-1 text-sm text-muted-foreground">
-                                        <p>
-                                            <span className="font-medium text-foreground">Modelo:</span>{" "}
-                                            {transcription.model_name}
-                                        </p>
-                                        <p>
-                                            <span className="font-medium text-foreground">Confianza:</span>{" "}
-                                            {typeof transcription.confidence === "number"
-                                                ? `${Math.round(transcription.confidence * 100)}%`
-                                                : "Sin dato"}
-                                        </p>
+                            <CardContent className="space-y-4">
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label>Texto bruto</Label>
+                                        <Textarea
+                                            readOnly
+                                            value={transcription.raw_text || ""}
+                                            placeholder="El contenido bruto aparecerá aquí."
+                                            className="min-h-36"
+                                        />
                                     </div>
 
-                                    <Button
-                                        type="button"
-                                        onClick={() => onSave(transcription.id, currentValue)}
-                                        disabled={savingTranscriptionId === transcription.id}
-                                    >
-                                        <Save className="h-4 w-4" />
-                                        {savingTranscriptionId === transcription.id
-                                            ? "Guardando..."
-                                            : "Guardar edición"}
-                                    </Button>
+                                    <div className="space-y-2">
+                                        <Label htmlFor={`transcription-final-${transcription.id}`}>
+                                            Texto final editable
+                                        </Label>
+                                        <Textarea
+                                            id={`transcription-final-${transcription.id}`}
+                                            value={currentValue}
+                                            onChange={(e) =>
+                                                setDraftTexts((prev) => ({
+                                                    ...prev,
+                                                    [transcription.id]: e.target.value,
+                                                }))
+                                            }
+                                            className="min-h-36"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                                    <div className="xl:col-span-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="grid gap-1 text-sm text-muted-foreground">
+                                            <p>
+                                                <span className="font-medium text-foreground">Modelo:</span>{" "}
+                                                {transcription.model_name}
+                                            </p>
+                                            <p>
+                                                <span className="font-medium text-foreground">Confianza:</span>{" "}
+                                                {typeof transcription.confidence === "number"
+                                                    ? `${Math.round(transcription.confidence * 100)}%`
+                                                    : "Sin dato"}
+                                            </p>
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            onClick={() => onSave(transcription.id, currentValue)}
+                                            disabled={savingTranscriptionId === transcription.id}
+                                        >
+                                            <Save className="h-4 w-4" />
+                                            {savingTranscriptionId === transcription.id
+                                                ? "Guardando..."
+                                                : "Guardar edición"}
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

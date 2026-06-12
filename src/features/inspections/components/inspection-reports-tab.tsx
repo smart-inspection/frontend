@@ -197,7 +197,7 @@ export function InspectionReportsTab({
                             </div>
                         </CardHeader>
 
-                        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                             <div className="rounded-xl border p-4">
                                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                                     Estado
