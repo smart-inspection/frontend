@@ -10,11 +10,11 @@ import type {
 function buildQueryParams(filters?: ProductivityFilters) {
     const params = new URLSearchParams()
 
-    if (filters?.startDate) params.set("start_date", filters.startDate)
-    if (filters?.endDate) params.set("end_date", filters.endDate)
-    if (filters?.inspector) params.set("inspector", filters.inspector)
+    if (filters?.startDate) params.set("datefrom", filters.startDate)
+    if (filters?.endDate) params.set("dateto", filters.endDate)
+    if (filters?.inspector) params.set("inspectorname", filters.inspector)
     if (filters?.operationalStatus) {
-        params.set("operational_status", filters.operationalStatus)
+        params.set("operationalstatus", filters.operationalStatus)
     }
 
     const query = params.toString()
@@ -70,7 +70,9 @@ function mapStatusItem(raw: unknown): ProductivityStatusItem {
     }
 }
 
-export async function getProductivitySummary(filters?: ProductivityFilters) {
+export async function getProductivitySummary(
+    filters?: ProductivityFilters,
+): Promise<ProductivitySummary> {
     const response = await apiGet<unknown>(
         `/productivity/summary${buildQueryParams(filters)}`,
     )
@@ -78,7 +80,9 @@ export async function getProductivitySummary(filters?: ProductivityFilters) {
     return mapSummary(response)
 }
 
-export async function getProductivityByInspector(filters?: ProductivityFilters) {
+export async function getProductivityByInspector(
+    filters?: ProductivityFilters,
+): Promise<ProductivityByInspectorItem[]> {
     const response = await apiGet<unknown>(
         `/productivity/by-inspector${buildQueryParams(filters)}`,
     )
@@ -88,7 +92,9 @@ export async function getProductivityByInspector(filters?: ProductivityFilters) 
     return response.map(mapByInspectorItem)
 }
 
-export async function getProductivityDashboard(filters?: ProductivityFilters) {
+export async function getProductivityDashboard(
+    filters?: ProductivityFilters,
+): Promise<ProductivityDashboard> {
     const response = await apiGet<unknown>(
         `/productivity/dashboard${buildQueryParams(filters)}`,
     )
@@ -103,5 +109,5 @@ export async function getProductivityDashboard(filters?: ProductivityFilters) {
         byStatus: Array.isArray(data?.by_status)
             ? data.by_status.map(mapStatusItem)
             : [],
-    } satisfies ProductivityDashboard
+    }
 }

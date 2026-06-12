@@ -1,5 +1,12 @@
 import { useMemo, useState } from "react"
-import { AlertCircle, CheckCircle2, Clock3, Filter, UserRound } from "lucide-react"
+import {
+    AlertCircle,
+    CheckCircle2,
+    Clock3,
+    Filter,
+    ListChecks,
+    UserRound,
+} from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,24 +27,24 @@ function formatMinutes(value: number) {
 
 const STATUS_OPTIONS = [
     { value: "", label: "Todos" },
-    { value: "draft", label: "Borrador" },
-    { value: "inreview", label: "Informe en proceso" },
-    { value: "observed", label: "Observado" },
-    { value: "finalized", label: "Finalizado" },
+    { value: "pending", label: "Pendiente" },
+    { value: "in_progress", label: "En proceso" },
+    { value: "blocked", label: "Bloqueado" },
+    { value: "completed", label: "Completado" },
 ]
 
 function formatOperationalStatusLabel(status: string) {
     switch (status) {
         case "pending":
-            return "Borrador"
-        case "inprogress":
-            return "Informe en proceso"
-        case "observed":
-            return "Observado"
+            return "Pendiente"
+        case "in_progress":
+            return "En proceso"
+        case "blocked":
+            return "Bloqueado"
         case "completed":
-            return "Finalizado"
+            return "Completado"
         default:
-            return status
+            return status || "Sin estado"
     }
 }
 
@@ -45,9 +52,9 @@ function getOperationalStatusVariant(status: string) {
     switch (status) {
         case "completed":
             return "default" as const
-        case "observed":
+        case "blocked":
             return "destructive" as const
-        case "inprogress":
+        case "in_progress":
             return "secondary" as const
         case "pending":
             return "outline" as const
@@ -57,19 +64,19 @@ function getOperationalStatusVariant(status: string) {
 }
 
 export function DashboardPage() {
-    const [startDate, setStartDate] = useState("")
-    const [endDate, setEndDate] = useState("")
-    const [inspector, setInspector] = useState("")
-    const [status, setStatus] = useState("")
+    const [draftStartDate, setDraftStartDate] = useState("")
+    const [draftEndDate, setDraftEndDate] = useState("")
+    const [draftInspector, setDraftInspector] = useState("")
+    const [draftStatus, setDraftStatus] = useState("")
 
     const filters = useMemo(
         () => ({
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
-            inspector: inspector || undefined,
-            operationalStatus: status || undefined,
+            startDate: draftStartDate || undefined,
+            endDate: draftEndDate || undefined,
+            inspector: draftInspector || undefined,
+            operationalStatus: draftStatus || undefined,
         }),
-        [startDate, endDate, inspector, status],
+        [draftStartDate, draftEndDate, draftInspector, draftStatus],
     )
 
     const { data, isLoading, isError, error } = useProductivityDashboardQuery(filters)
@@ -77,18 +84,38 @@ export function DashboardPage() {
     const summary = data?.summary
     const byInspector = data?.byInspector ?? []
     const byStatus = data?.byStatus ?? []
-    const reportsOutsideGoal =
-        summary ? Math.max(summary.completedReports - summary.onTimeCount, 0) : null
+
+    const inspectorOptions = useMemo(() => {
+        const uniqueNames = Array.from(
+            new Set(
+                byInspector
+                    .map((item) => item.inspectorName?.trim())
+                    .filter((value): value is string => Boolean(value)),
+            ),
+        )
+
+        return uniqueNames.sort((a, b) => a.localeCompare(b, "es"))
+    }, [byInspector])
+
+    const reportsOutsideGoal = summary
+        ? Math.max(summary.completedReports - summary.onTimeCount, 0)
+        : 0
+
+    const handleClearFilters = () => {
+        setDraftStartDate("")
+        setDraftEndDate("")
+        setDraftInspector("")
+        setDraftStatus("")
+    }
 
     return (
         <section className="space-y-5">
             <div className="space-y-1">
                 <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                    Productividad
+                    Productividad operativa
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                    Monitorea tiempos de informe, cumplimiento de meta y rendimiento por
-                    inspector.
+                    Monitorea tiempos de informe, cumplimiento de meta y carga operativa por inspector.
                 </p>
             </div>
 
@@ -105,8 +132,8 @@ export function DashboardPage() {
                         <label className="text-sm font-medium">Fecha inicio</label>
                         <Input
                             type="date"
-                            value={startDate}
-                            onChange={(event) => setStartDate(event.target.value)}
+                            value={draftStartDate}
+                            onChange={(event) => setDraftStartDate(event.target.value)}
                         />
                     </div>
 
@@ -114,25 +141,32 @@ export function DashboardPage() {
                         <label className="text-sm font-medium">Fecha fin</label>
                         <Input
                             type="date"
-                            value={endDate}
-                            onChange={(event) => setEndDate(event.target.value)}
+                            value={draftEndDate}
+                            onChange={(event) => setDraftEndDate(event.target.value)}
                         />
                     </div>
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Inspector</label>
-                        <Input
-                            placeholder="Nombre del inspector"
-                            value={inspector}
-                            onChange={(event) => setInspector(event.target.value)}
-                        />
+                        <select
+                            value={draftInspector}
+                            onChange={(event) => setDraftInspector(event.target.value)}
+                            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        >
+                            <option value="">Todos</option>
+                            {inspectorOptions.map((inspectorName) => (
+                                <option key={inspectorName} value={inspectorName}>
+                                    {inspectorName}
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Estado</label>
+                        <label className="text-sm font-medium">Estado operativo</label>
                         <select
-                            value={status}
-                            onChange={(event) => setStatus(event.target.value)}
+                            value={draftStatus}
+                            onChange={(event) => setDraftStatus(event.target.value)}
                             className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                         >
                             {STATUS_OPTIONS.map((option) => (
@@ -141,6 +175,16 @@ export function DashboardPage() {
                                 </option>
                             ))}
                         </select>
+                    </div>
+
+                    <div className="sm:col-span-2 xl:col-span-4 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={handleClearFilters}
+                            className="inline-flex h-9 items-center rounded-lg border border-input px-3 text-sm font-medium transition-colors hover:bg-muted"
+                        >
+                            Limpiar filtros
+                        </button>
                     </div>
                 </CardContent>
             </Card>
@@ -181,15 +225,15 @@ export function DashboardPage() {
 
                 <Card className="border-border/60 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="text-sm font-medium">Informes completados</CardTitle>
-                        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Inspecciones evaluadas</CardTitle>
+                        <ListChecks className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-semibold tracking-tight">
-                            {isLoading || !summary ? "--" : summary.completedReports}
+                            {isLoading || !summary ? "--" : summary.totalInspections}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                            Informes cerrados en el rango consultado
+                            Registros incluidos en el rango consultado
                         </p>
                     </CardContent>
                 </Card>
@@ -204,7 +248,7 @@ export function DashboardPage() {
                             {isLoading || !summary ? "--" : `${summary.onTimePercentage.toFixed(1)}%`}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                            Informes dentro de la meta de 20 minutos
+                            Informes dentro de la meta de {summary?.goalMinutes ?? 20} minutos
                         </p>
                     </CardContent>
                 </Card>
@@ -216,71 +260,59 @@ export function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-semibold tracking-tight">
-                            {isLoading || reportsOutsideGoal === null ? "--" : reportsOutsideGoal}
+                            {isLoading || !summary ? "--" : reportsOutsideGoal}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                            Informes que superaron los 20 minutos
+                            Informes que superaron la meta operativa
                         </p>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">
+            <div className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
                 <Card className="border-border/60 shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-base">Productividad por inspector</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <UserRound className="h-4 w-4" />
+                            Productividad por inspector
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+
+                    <CardContent>
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Inspector</TableHead>
                                     <TableHead>Asignadas</TableHead>
                                     <TableHead>Completadas</TableHead>
-                                    <TableHead>Tiempo promedio</TableHead>
+                                    <TableHead>Promedio</TableHead>
                                     <TableHead>Cumplimiento</TableHead>
                                 </TableRow>
                             </TableHeader>
+
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                                        <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
                                             Cargando productividad...
                                         </TableCell>
                                     </TableRow>
-                                ) : byInspector.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                                            No hay datos de productividad para los filtros aplicados.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
+                                ) : byInspector.length ? (
                                     byInspector.map((item) => (
                                         <TableRow key={item.inspectorName}>
-                                            <TableCell className="font-medium">
-                                                <div className="flex items-center gap-2">
-                                                    <UserRound className="h-4 w-4 text-muted-foreground" />
-                                                    <span>{item.inspectorName}</span>
-                                                </div>
-                                            </TableCell>
+                                            <TableCell className="font-medium">{item.inspectorName}</TableCell>
                                             <TableCell>{item.assignedInspections}</TableCell>
                                             <TableCell>{item.completedReports}</TableCell>
                                             <TableCell>{formatMinutes(item.averageReportMinutes)}</TableCell>
-                                            <TableCell>
-                                                <Badge
-                                                    variant={
-                                                        item.onTimePercentage >= 70
-                                                            ? "default"
-                                                            : item.onTimePercentage >= 40
-                                                                ? "secondary"
-                                                                : "destructive"
-                                                    }
-                                                >
-                                                    {item.onTimePercentage.toFixed(1)}%
-                                                </Badge>
-                                            </TableCell>
+                                            <TableCell>{item.onTimePercentage.toFixed(1)}%</TableCell>
                                         </TableRow>
                                     ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
+                                            No hay registros para los filtros seleccionados.
+                                        </TableCell>
+                                    </TableRow>
                                 )}
                             </TableBody>
                         </Table>
@@ -291,30 +323,26 @@ export function DashboardPage() {
                     <CardHeader>
                         <CardTitle className="text-base">Estado de inspecciones</CardTitle>
                     </CardHeader>
+
                     <CardContent className="space-y-3">
                         {isLoading ? (
                             <p className="text-sm text-muted-foreground">Cargando estados...</p>
-                        ) : byStatus.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                No hay estados para los filtros aplicados.
-                            </p>
-                        ) : (
+                        ) : byStatus.length ? (
                             byStatus.map((item) => (
                                 <div
                                     key={item.operationalStatus}
-                                    className="flex items-center justify-between gap-3 rounded-xl border p-3"
+                                    className="flex items-center justify-between rounded-xl border px-3 py-3"
                                 >
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-medium">
-                                            {formatOperationalStatusLabel(item.operationalStatus)}
-                                        </p>
-                                        <Badge variant={getOperationalStatusVariant(item.operationalStatus)}>
-                                            {item.operationalStatus}
-                                        </Badge>
-                                    </div>
-                                    <p className="text-xl font-semibold tracking-tight">{item.count}</p>
+                                    <Badge variant={getOperationalStatusVariant(item.operationalStatus)}>
+                                        {formatOperationalStatusLabel(item.operationalStatus)}
+                                    </Badge>
+                                    <span className="text-sm font-semibold">{item.count}</span>
                                 </div>
                             ))
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                No hay estados operativos para mostrar.
+                            </p>
                         )}
                     </CardContent>
                 </Card>
@@ -322,3 +350,5 @@ export function DashboardPage() {
         </section>
     )
 }
+
+export default DashboardPage
