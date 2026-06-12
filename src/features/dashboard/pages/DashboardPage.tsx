@@ -19,9 +19,10 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { useCurrentUserQuery } from "@/features/auth/api/auth.queries"
 import { useProductivityDashboardQuery } from "@/features/productivity/api/productivity.queries"
 
-function formatMinutes(value: number) {
+function format_minutes(value: number) {
     return `${value.toFixed(1)} min`
 }
 
@@ -33,89 +34,91 @@ const STATUS_OPTIONS = [
     { value: "completed", label: "Completado" },
 ]
 
-function formatOperationalStatusLabel(status: string) {
+function format_status_label(status: string) {
     switch (status) {
-        case "pending":
-            return "Pendiente"
-        case "in_progress":
-            return "En proceso"
-        case "blocked":
-            return "Bloqueado"
-        case "completed":
-            return "Completado"
-        default:
-            return status || "Sin estado"
+        case "pending": return "Pendiente"
+        case "in_progress": return "En proceso"
+        case "blocked": return "Bloqueado"
+        case "completed": return "Completado"
+        default: return status || "Sin estado"
     }
 }
 
-function getOperationalStatusVariant(status: string) {
+function get_status_variant(status: string) {
     switch (status) {
-        case "completed":
-            return "default" as const
-        case "blocked":
-            return "destructive" as const
-        case "in_progress":
-            return "secondary" as const
-        case "pending":
-            return "outline" as const
-        default:
-            return "outline" as const
+        case "completed": return "default" as const
+        case "blocked": return "destructive" as const
+        case "in_progress": return "secondary" as const
+        default: return "outline" as const
     }
 }
 
 export function DashboardPage() {
-    const [draftStartDate, setDraftStartDate] = useState("")
-    const [draftEndDate, setDraftEndDate] = useState("")
-    const [draftInspector, setDraftInspector] = useState("")
-    const [draftStatus, setDraftStatus] = useState("")
+    const { data: current_user } = useCurrentUserQuery()
+
+    const is_inspector = current_user?.role === "inspector"
+    const is_admin_or_viewer =
+        current_user?.role === "admin" || current_user?.role === "viewer"
+
+    const [draft_start_date, set_draft_start_date] = useState("")
+    const [draft_end_date, set_draft_end_date] = useState("")
+    const [draft_inspector, set_draft_inspector] = useState("")
+    const [draft_status, set_draft_status] = useState("")
+
+    const resolved_inspector = is_inspector
+        ? (current_user?.full_name ?? "")
+        : draft_inspector
 
     const filters = useMemo(
         () => ({
-            startDate: draftStartDate || undefined,
-            endDate: draftEndDate || undefined,
-            inspector: draftInspector || undefined,
-            operationalStatus: draftStatus || undefined,
+            startDate: draft_start_date || undefined,
+            endDate: draft_end_date || undefined,
+            inspector: resolved_inspector || undefined,
+            operationalStatus: draft_status || undefined,
         }),
-        [draftStartDate, draftEndDate, draftInspector, draftStatus],
+        [draft_start_date, draft_end_date, resolved_inspector, draft_status],
     )
 
     const { data, isLoading, isError, error } = useProductivityDashboardQuery(filters)
 
     const summary = data?.summary
-    const byInspector = data?.byInspector ?? []
-    const byStatus = data?.byStatus ?? []
+    const by_inspector = data?.byInspector ?? []
+    const by_status = data?.byStatus ?? []
 
-    const inspectorOptions = useMemo(() => {
-        const uniqueNames = Array.from(
+    const inspector_options = useMemo(() => {
+        const unique_names = Array.from(
             new Set(
-                byInspector
+                by_inspector
                     .map((item) => item.inspectorName?.trim())
                     .filter((value): value is string => Boolean(value)),
             ),
         )
+        return unique_names.sort((a, b) => a.localeCompare(b, "es"))
+    }, [by_inspector])
 
-        return uniqueNames.sort((a, b) => a.localeCompare(b, "es"))
-    }, [byInspector])
-
-    const reportsOutsideGoal = summary
+    const reports_outside_goal = summary
         ? Math.max(summary.completedReports - summary.onTimeCount, 0)
         : 0
 
-    const handleClearFilters = () => {
-        setDraftStartDate("")
-        setDraftEndDate("")
-        setDraftInspector("")
-        setDraftStatus("")
+    function handle_clear_filters() {
+        set_draft_start_date("")
+        set_draft_end_date("")
+        if (!is_inspector) set_draft_inspector("")
+        set_draft_status("")
     }
 
     return (
         <section className="space-y-5">
             <div className="space-y-1">
                 <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
-                    Productividad operativa
+                    {is_inspector
+                        ? `Mi productividad`
+                        : "Productividad operativa"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                    Monitorea tiempos de informe, cumplimiento de meta y carga operativa por inspector.
+                    {is_inspector
+                        ? `Tus métricas e inspecciones asignadas, ${current_user?.full_name}.`
+                        : "Monitorea tiempos de informe, cumplimiento de meta y carga operativa por inspector."}
                 </p>
             </div>
 
@@ -132,8 +135,8 @@ export function DashboardPage() {
                         <label className="text-sm font-medium">Fecha inicio</label>
                         <Input
                             type="date"
-                            value={draftStartDate}
-                            onChange={(event) => setDraftStartDate(event.target.value)}
+                            value={draft_start_date}
+                            onChange={(e) => set_draft_start_date(e.target.value)}
                         />
                     </div>
 
@@ -141,32 +144,41 @@ export function DashboardPage() {
                         <label className="text-sm font-medium">Fecha fin</label>
                         <Input
                             type="date"
-                            value={draftEndDate}
-                            onChange={(event) => setDraftEndDate(event.target.value)}
+                            value={draft_end_date}
+                            onChange={(e) => set_draft_end_date(e.target.value)}
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Inspector</label>
-                        <select
-                            value={draftInspector}
-                            onChange={(event) => setDraftInspector(event.target.value)}
-                            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                        >
-                            <option value="">Todos</option>
-                            {inspectorOptions.map((inspectorName) => (
-                                <option key={inspectorName} value={inspectorName}>
-                                    {inspectorName}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    {is_admin_or_viewer ? (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Inspector</label>
+                            <select
+                                value={draft_inspector}
+                                onChange={(e) => set_draft_inspector(e.target.value)}
+                                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                            >
+                                <option value="">Todos</option>
+                                {inspector_options.map((name) => (
+                                    <option key={name} value={name}>
+                                        {name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Inspector</label>
+                            <div className="flex h-9 w-full items-center rounded-lg border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                                {current_user?.full_name}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium">Estado operativo</label>
                         <select
-                            value={draftStatus}
-                            onChange={(event) => setDraftStatus(event.target.value)}
+                            value={draft_status}
+                            onChange={(e) => set_draft_status(e.target.value)}
                             className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                         >
                             {STATUS_OPTIONS.map((option) => (
@@ -180,7 +192,7 @@ export function DashboardPage() {
                     <div className="sm:col-span-2 xl:col-span-4 flex justify-end">
                         <button
                             type="button"
-                            onClick={handleClearFilters}
+                            onClick={handle_clear_filters}
                             className="inline-flex h-9 items-center rounded-lg border border-input px-3 text-sm font-medium transition-colors hover:bg-muted"
                         >
                             Limpiar filtros
@@ -207,6 +219,7 @@ export function DashboardPage() {
                 </Card>
             ) : null}
 
+            {/* KPIs */}
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <Card className="border-border/60 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -215,7 +228,9 @@ export function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-semibold tracking-tight">
-                            {isLoading || !summary ? "--" : formatMinutes(summary.averageReportMinutes)}
+                            {isLoading || !summary
+                                ? "--"
+                                : format_minutes(summary.averageReportMinutes)}
                         </p>
                         <p className="text-xs text-muted-foreground">
                             Promedio de elaboración de informes
@@ -225,7 +240,9 @@ export function DashboardPage() {
 
                 <Card className="border-border/60 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="text-sm font-medium">Inspecciones evaluadas</CardTitle>
+                        <CardTitle className="text-sm font-medium">
+                            Inspecciones evaluadas
+                        </CardTitle>
                         <ListChecks className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -245,7 +262,9 @@ export function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-semibold tracking-tight">
-                            {isLoading || !summary ? "--" : `${summary.onTimePercentage.toFixed(1)}%`}
+                            {isLoading || !summary
+                                ? "--"
+                                : `${summary.onTimePercentage.toFixed(1)}%`}
                         </p>
                         <p className="text-xs text-muted-foreground">
                             Informes dentro de la meta de {summary?.goalMinutes ?? 20} minutos
@@ -260,7 +279,7 @@ export function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-semibold tracking-tight">
-                            {isLoading || !summary ? "--" : reportsOutsideGoal}
+                            {isLoading || !summary ? "--" : reports_outside_goal}
                         </p>
                         <p className="text-xs text-muted-foreground">
                             Informes que superaron la meta operativa
@@ -269,12 +288,13 @@ export function DashboardPage() {
                 </Card>
             </div>
 
+            {/* Tablas */}
             <div className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
                 <Card className="border-border/60 shadow-sm">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base">
                             <UserRound className="h-4 w-4" />
-                            Productividad por inspector
+                            {is_inspector ? "Mis estadísticas" : "Productividad por inspector"}
                         </CardTitle>
                     </CardHeader>
 
@@ -282,7 +302,7 @@ export function DashboardPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Inspector</TableHead>
+                                    {!is_inspector && <TableHead>Inspector</TableHead>}
                                     <TableHead>Asignadas</TableHead>
                                     <TableHead>Completadas</TableHead>
                                     <TableHead>Promedio</TableHead>
@@ -293,23 +313,37 @@ export function DashboardPage() {
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
+                                        <TableCell
+                                            colSpan={is_inspector ? 4 : 5}
+                                            className="py-6 text-center text-sm text-muted-foreground"
+                                        >
                                             Cargando productividad...
                                         </TableCell>
                                     </TableRow>
-                                ) : byInspector.length ? (
-                                    byInspector.map((item) => (
+                                ) : by_inspector.length ? (
+                                    by_inspector.map((item) => (
                                         <TableRow key={item.inspectorName}>
-                                            <TableCell className="font-medium">{item.inspectorName}</TableCell>
+                                            {!is_inspector && (
+                                                <TableCell className="font-medium">
+                                                    {item.inspectorName}
+                                                </TableCell>
+                                            )}
                                             <TableCell>{item.assignedInspections}</TableCell>
                                             <TableCell>{item.completedReports}</TableCell>
-                                            <TableCell>{formatMinutes(item.averageReportMinutes)}</TableCell>
-                                            <TableCell>{item.onTimePercentage.toFixed(1)}%</TableCell>
+                                            <TableCell>
+                                                {format_minutes(item.averageReportMinutes)}
+                                            </TableCell>
+                                            <TableCell>
+                                                {item.onTimePercentage.toFixed(1)}%
+                                            </TableCell>
                                         </TableRow>
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
+                                        <TableCell
+                                            colSpan={is_inspector ? 4 : 5}
+                                            className="py-6 text-center text-sm text-muted-foreground"
+                                        >
                                             No hay registros para los filtros seleccionados.
                                         </TableCell>
                                     </TableRow>
@@ -327,14 +361,14 @@ export function DashboardPage() {
                     <CardContent className="space-y-3">
                         {isLoading ? (
                             <p className="text-sm text-muted-foreground">Cargando estados...</p>
-                        ) : byStatus.length ? (
-                            byStatus.map((item) => (
+                        ) : by_status.length ? (
+                            by_status.map((item) => (
                                 <div
                                     key={item.operationalStatus}
                                     className="flex items-center justify-between rounded-xl border px-3 py-3"
                                 >
-                                    <Badge variant={getOperationalStatusVariant(item.operationalStatus)}>
-                                        {formatOperationalStatusLabel(item.operationalStatus)}
+                                    <Badge variant={get_status_variant(item.operationalStatus)}>
+                                        {format_status_label(item.operationalStatus)}
                                     </Badge>
                                     <span className="text-sm font-semibold">{item.count}</span>
                                 </div>
