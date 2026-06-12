@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom"
 import { AppShell } from "@/components/layout/app-shell"
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage"
-import { ReportsPage } from "@/features/reports/pages/reports-page"
+import { ReportsPage } from "@/features/reports/pages/ReportsPage"
 import { EvidencesPage } from "@/features/evidences/pages/evidences-page"
 
 import InspectionsPage from "../features/inspections/pages/InspectionsPage"
