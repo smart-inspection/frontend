@@ -1,15 +1,16 @@
-import { Link, NavLink, Outlet } from "react-router-dom"
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import {
     ClipboardList,
     ClipboardPlus,
     FileText,
     FolderOpen,
-    LayoutDashboard,
+    LayoutDashboard, LogOut,
     Menu,
 } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useCurrentUserQuery, useLogoutMutation } from "@/features/auth/api/auth.queries";
 
 const items = [
     { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -54,6 +55,16 @@ function NavItems({ onNavigate }: NavItemsProps) {
 }
 
 export function AppShell() {
+    const navigate = useNavigate()
+    const { data: current_user } = useCurrentUserQuery()
+    const logout_mutation = useLogoutMutation()
+
+    function handle_logout() {
+        logout_mutation.mutate(undefined, {
+            onSuccess: () => navigate("/login", { replace: true }),
+        })
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900">
             <header className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -87,10 +98,26 @@ export function AppShell() {
                         </Link>
                     </div>
 
-                    <div className="min-w-0 text-right">
-                        <p className="truncate text-xs text-slate-500 sm:text-sm">
-                            Sistema web inteligente para inspecciones
-                        </p>
+                    <div className="flex items-center gap-2">
+                        {current_user ? (
+                            <div className="hidden flex-col items-end sm:flex">
+                                <span className="text-sm font-medium leading-tight">
+                                    {current_user.full_name}
+                                </span>
+                                <span className="text-xs text-slate-500 capitalize">
+                                    {current_user.role}
+                                </span>
+                            </div>
+                        ) : null}
+                        <Button
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label="Cerrar sesión"
+                            onClick={handle_logout}
+                            disabled={logout_mutation.isPending}
+                        >
+                            <LogOut className="h-4 w-4" />
+                        </Button>
                     </div>
                 </div>
             </header>
