@@ -71,10 +71,8 @@ export function InspectionEvidencesTab({
                                            evidences,
                                            isUploading,
                                            uploadError,
-                                           runningEvidenceId,
                                            extractingEvidenceId,
                                            onUpload,
-                                           onRunOcr,
                                            onExtract,
                                        }: InspectionEvidencesTabProps) {
     const [file, setFile] = useState<File | null>(null)
@@ -488,18 +486,6 @@ export function InspectionEvidencesTab({
                                 </div>
 
                                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => onRunOcr(evidence.id)}
-                                        disabled={runningEvidenceId === evidence.id}
-                                    >
-                                        <ScanSearch className="h-4 w-4" />
-                                        {runningEvidenceId === evidence.id
-                                            ? "Procesando OCR..."
-                                            : "Ejecutar OCR"}
-                                    </Button>
-
                                     <Button
                                         type="button"
                                         variant="outline"

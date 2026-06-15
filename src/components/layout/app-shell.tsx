@@ -3,7 +3,6 @@ import {
     ClipboardList,
     ClipboardPlus,
     FileText,
-    FolderOpen,
     LayoutDashboard,
     LogOut,
     Menu,
@@ -51,12 +50,6 @@ const NAV_ITEMS: NavItem[] = [
         label: "Inspecciones",
         icon: ClipboardList,
         roles: ALL_ROLES,
-    },
-    {
-        to: "/evidences",
-        label: "Evidencias",
-        icon: FolderOpen,
-        roles: ["admin", "viewer"],
     },
     {
         to: "/reports",
