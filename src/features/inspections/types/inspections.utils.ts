@@ -11,7 +11,7 @@ export function formatInspectionStatus(status: string) {
         case "edited":
             return "Editado"
         case "in_review":
-            return "En revisión"
+            return "Informe en proceso"
         case "observed":
             return "Observado"
         case "finalized":

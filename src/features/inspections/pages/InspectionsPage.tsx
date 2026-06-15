@@ -17,7 +17,6 @@ import {
     formatInspectionStatus,
     getInspectionStatusVariant,
 } from "../types/inspections.utils"
-
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -38,7 +37,6 @@ function InspectionsPageSkeleton() {
                             <Skeleton className="h-6 w-24 rounded-full" />
                         </div>
                     </CardHeader>
-
                     <CardContent className="space-y-3">
                         <Skeleton className="h-4 w-full" />
                         <Skeleton className="h-4 w-10/12" />
@@ -83,58 +81,55 @@ export default function InspectionsPage() {
                 inspection.client_name,
                 inspection.equipment_type,
                 inspection.inspection_type,
-                inspection.location,
                 inspection.responsible_inspector,
                 inspection.status,
             ]
                 .filter(Boolean)
-                .join(" ")
-                .toLowerCase()
-                .includes(term),
+                .some((value) => String(value).toLowerCase().includes(term)),
         )
     }, [data, search])
 
     return (
-        <section className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-4 md:px-6">
-            <header className="space-y-4">
+        <section className="space-y-5">
+            <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Smart Inspect</p>
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <h1 className="text-2xl font-semibold tracking-tight">Inspecciones</h1>
-                            <p className="text-sm text-muted-foreground">
-                                Consulta el historial de inspecciones registradas y entra al detalle técnico.
-                            </p>
-                        </div>
-                        <Button asChild>
-                            <Link to="/inspections/new">Nueva inspección</Link>
-                        </Button>
+                    <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Flujo operativo
                     </div>
+                    <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                        Inspecciones
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                        Revisa el avance operativo y accede al detalle técnico de cada inspección.
+                    </p>
                 </div>
 
-                <Card className="border-border/60 bg-card/80 shadow-sm">
-                    <CardContent className="p-4">
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Buscar por código, cliente, equipo, inspector o estado"
-                                className="pl-9"
-                            />
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span className="rounded-full bg-muted px-2.5 py-1">
-                Total: {data.length}
-              </span>
-                            <span className="rounded-full bg-muted px-2.5 py-1">
-                Mostrando: {filteredInspections.length}
-              </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                <Button asChild className="w-full sm:w-auto">
+                    <Link to="/inspections/new">Nueva inspección</Link>
+                </Button>
             </header>
+
+            <Card className="border-border/60 bg-card/80 shadow-sm">
+                <CardContent className="p-4">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Buscar por código, cliente, equipo, inspector o estado"
+                            className="pl-9"
+                        />
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <span className="rounded-full bg-muted px-2.5 py-1">Total: {data.length}</span>
+                        <span className="rounded-full bg-muted px-2.5 py-1">
+              Mostrando: {filteredInspections.length}
+            </span>
+                    </div>
+                </CardContent>
+            </Card>
 
             {isLoading ? <InspectionsPageSkeleton /> : null}
 
@@ -142,7 +137,9 @@ export default function InspectionsPage() {
                 <Card className="border-destructive/30">
                     <CardContent className="py-8">
                         <div className="space-y-2 text-center">
-                            <h3 className="font-semibold text-destructive">Error al cargar inspecciones</h3>
+                            <h3 className="font-semibold text-destructive">
+                                Error al cargar inspecciones
+                            </h3>
                             <p className="text-sm text-muted-foreground">
                                 {String((error as Error)?.message ?? "No se pudo obtener la lista")}
                             </p>
@@ -163,12 +160,13 @@ export default function InspectionsPage() {
                         >
                             <Card className="border-border/60 shadow-sm transition-colors hover:bg-accent/30">
                                 <CardHeader className="space-y-3">
-                                    <div className="flex items-start justify-between gap-3">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="min-w-0 space-y-1">
-                                            <div className="flex items-center gap-2">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                            <div className="flex items-center gap-3">
+                        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                           <ClipboardList className="h-4 w-4" />
                         </span>
+
                                                 <div className="min-w-0">
                                                     <h2 className="truncate text-base font-semibold">
                                                         {inspection.code}
@@ -184,44 +182,40 @@ export default function InspectionsPage() {
                                             {formatInspectionStatus(inspection.status)}
                                         </Badge>
                                     </div>
-                                </CardHeader>
 
-                                <CardContent className="space-y-4">
-                                    <div className="grid gap-2 text-sm text-muted-foreground">
+                                    <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                                         <div className="flex items-center gap-2">
-                                            <Wrench className="h-4 w-4" />
-                                            <span>
+                                            <Wrench className="h-4 w-4 shrink-0" />
+                                            <span className="truncate">
                         {inspection.equipment_type} · {inspection.inspection_type}
                       </span>
                                         </div>
 
                                         <div className="flex items-center gap-2">
-                                            <CalendarDays className="h-4 w-4" />
+                                            <CalendarDays className="h-4 w-4 shrink-0" />
                                             <span>{formatInspectionDate(inspection.inspection_date)}</span>
                                         </div>
 
                                         <div className="flex items-center gap-2">
-                                            <MapPin className="h-4 w-4" />
-                                            <span>{inspection.location || "Ubicación no registrada"}</span>
+                                            <MapPin className="h-4 w-4 shrink-0" />
+                                            <span className="truncate">
+                        {inspection.location || "Ubicación no registrada"}
+                      </span>
                                         </div>
 
                                         <div className="flex items-center gap-2">
-                                            <UserRound className="h-4 w-4" />
-                                            <span>
+                                            <UserRound className="h-4 w-4 shrink-0" />
+                                            <span className="truncate">
                         {inspection.responsible_inspector || "Inspector no asignado"}
                       </span>
                                         </div>
                                     </div>
+                                </CardHeader>
 
-                                    <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2">
-                                        <div className="flex items-center gap-2 text-sm">
-                                            <ShieldCheck className="h-4 w-4 text-primary" />
-                                            <span className="text-foreground">Ver detalle de inspección</span>
-                                        </div>
-
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
+                                <CardContent className="pt-0">
+                                    <div className="flex items-center justify-end text-sm font-medium text-primary">
+                                        <span>Ver detalle</span>
+                                        <ChevronRight className="ml-1 h-4 w-4" />
                                     </div>
                                 </CardContent>
                             </Card>

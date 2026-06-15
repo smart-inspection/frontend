@@ -14,7 +14,7 @@ import type {
     Inspection,
     InspectionCreateInput,
     InspectionField,
-    InspectionFieldCreateInput,
+    InspectionFieldCreateInput, InspectionRequestConvertInput,
     LlmReportGenerateInput,
     OcrExtractResponse,
     OcrValidationItem,
@@ -287,6 +287,54 @@ function mapReportStatusLog(raw: any): ReportStatusLog {
     }
 }
 
+export type ProductivityRecord = {
+    id: number
+    inspection_id: number
+    inspector_name: string | null
+    scheduled_date: string | null
+    report_started_at: string | null
+    report_finished_at: string | null
+    duration_minutes: number | null
+    operational_status: string
+    met_goal: boolean | null
+}
+
+function map_productivity_record(raw: any): ProductivityRecord {
+    return {
+        id: asNumber(raw?.id),
+        inspection_id: asNumber(pickFirst(raw?.inspection_id, raw?.inspectionid)),
+        inspector_name: asNullableString(pickFirst(raw?.inspector_name, raw?.inspectorname)),
+        scheduled_date: asNullableString(pickFirst(raw?.scheduled_date, raw?.scheduleddate)),
+        report_started_at: asNullableString(
+            pickFirst(raw?.report_started_at, raw?.reportstartedat),
+        ),
+        report_finished_at: asNullableString(
+            pickFirst(raw?.report_finished_at, raw?.reportfinishedat),
+        ),
+        duration_minutes: asNullableNumber(
+            pickFirst(raw?.duration_minutes, raw?.durationminutes),
+        ),
+        operational_status: asString(
+            pickFirst(raw?.operational_status, raw?.operationalstatus),
+            "pending",
+        ),
+        met_goal: typeof raw?.met_goal === "boolean" ? raw.met_goal : null,
+    }
+}
+
+export async function get_productivity_by_inspection(
+    inspection_id: number,
+): Promise<ProductivityRecord | null> {
+    try {
+        const response = await apiGet<any>(
+            `/productivity/inspection/${inspection_id}`,
+        )
+        return response ? map_productivity_record(response) : null
+    } catch {
+        return null
+    }
+}
+
 export async function getInspections(): Promise<Inspection[]> {
     const response = await apiGet<any[]>("/inspections")
     return Array.isArray(response) ? response.map(mapInspection) : []
@@ -306,6 +354,25 @@ export async function createInspection(
     })
 
     return mapInspection(response)
+}
+
+export async function convertInspectionRequest(
+    inspectionRequestId: number,
+    payload: InspectionRequestConvertInput,
+): Promise<void> {
+    await apiPatch(
+        `/inspection-requests/${inspectionRequestId}/convert`,
+        {
+            inspection_id: payload.inspection_id,
+            status: payload.status ?? "converted",
+        },
+    )
+}
+
+export async function startProductivity(inspectionId: number): Promise<void> {
+    await apiPatch(`/productivity/inspection/${inspectionId}/start`, {
+        reportstartedat: new Date().toISOString(),
+    })
 }
 
 export async function getInspectionFields(

@@ -21,7 +21,11 @@ import {
     updateReportDraft,
     updateReportStatus,
     updateTranscription,
-    validateInspectionOcr, updateInspectionField,
+    validateInspectionOcr,
+    updateInspectionField,
+    convertInspectionRequest,
+    startProductivity,
+    get_productivity_by_inspection,
 } from "./inspections.api"
 
 import { inspectionsKeys } from "./inspections.keys"
@@ -88,22 +92,22 @@ export function useReportStatusQuery(draftId: number) {
     return useQuery({
         queryKey: inspectionsKeys.reportStatus(draftId),
         queryFn: () => getReportStatus(draftId),
-        enabled: !!draftId,
+        enabled: Number.isFinite(draftId) && draftId > 0,
+        retry: false,
     })
 }
 
-// Alias para compatibilidad si alguna página usa el otro nombre
 export const useReportDraftStatusQuery = useReportStatusQuery
 
 export function useReportHistoryQuery(draftId: number, limit = 50) {
     return useQuery({
         queryKey: inspectionsKeys.reportHistory(draftId, limit),
         queryFn: () => getReportHistory(draftId, limit),
-        enabled: !!draftId,
+        enabled: Number.isFinite(draftId) && draftId > 0,
+        retry: false,
     })
 }
 
-// Alias para compatibilidad si alguna página usa el otro nombre
 export const useReportDraftHistoryQuery = useReportHistoryQuery
 
 export function useInspectionOcrValidationQuery(
@@ -125,6 +129,31 @@ export function useCreateInspectionMutation() {
         mutationFn: createInspection,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: inspectionsKeys.list() })
+        },
+    })
+}
+
+export function useConvertInspectionRequestMutation() {
+    return useMutation({
+        mutationFn: ({
+                         inspectionRequestId,
+                         payload,
+                     }: {
+            inspectionRequestId: number
+            payload: Parameters<typeof convertInspectionRequest>[1]
+        }) => convertInspectionRequest(inspectionRequestId, payload),
+    })
+}
+
+export function useStartProductivityMutation(inspectionId: number) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: () => startProductivity(inspectionId),
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({
+                queryKey: inspectionsKeys.detail(inspectionId),
+            })
         },
     })
 }
@@ -279,21 +308,17 @@ export function useUpdateReportDraftMutation(inspectionId: number) {
     })
 }
 
-export function useUpdateReportStatusMutation(draftId: number) {
-    const queryClient = useQueryClient()
-
+export function useUpdateReportStatusMutation(draftId: number, inspectionId: number) {
+    const query_client = useQueryClient()
     return useMutation({
         mutationFn: (payload: { status: string; notes?: string | null }) =>
             updateReportStatus(draftId, payload),
         onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: inspectionsKeys.reportStatus(draftId),
+            void query_client.invalidateQueries({
+                queryKey: inspectionsKeys.drafts(inspectionId),
             })
-            queryClient.invalidateQueries({
-                queryKey: inspectionsKeys.reportHistory(draftId, 50),
-            })
-            queryClient.invalidateQueries({
-                queryKey: inspectionsKeys.draft(draftId),
+            void query_client.invalidateQueries({
+                queryKey: inspectionsKeys.detail(inspectionId),
             })
         },
     })
@@ -315,5 +340,14 @@ export function useUpdateInspectionFieldMutation(inspectionId: number) {
             queryClient.invalidateQueries({ queryKey: inspectionsKeys.detail(inspectionId) })
             queryClient.invalidateQueries({ queryKey: inspectionsKeys.ocrValidation(inspectionId) })
         },
+    })
+}
+
+export function useProductivityByInspectionQuery(inspection_id: number) {
+    return useQuery({
+        queryKey: inspectionsKeys.productivityByInspection(inspection_id),
+        queryFn: () => get_productivity_by_inspection(inspection_id),
+        enabled: Number.isFinite(inspection_id) && inspection_id > 0,
+        retry: false,
     })
 }
