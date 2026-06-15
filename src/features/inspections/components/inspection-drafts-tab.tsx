@@ -60,7 +60,7 @@ export function InspectionDraftsTab({
     }, [drafts])
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-4">
             <Card className="border-border/60 shadow-sm">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -72,7 +72,7 @@ export function InspectionDraftsTab({
                     </CardDescription>
                 </CardHeader>
 
-                <CardContent className="grid gap-4 xl:grid-cols-2">
+                <CardContent className="grid gap-4 lg:grid-cols-2">
                     <div className="rounded-xl border bg-muted/20 p-4">
                         <div className="space-y-3">
                             <div className="space-y-2">
@@ -193,7 +193,7 @@ export function InspectionDraftsTab({
                                     </div>
                                 </div>
 
-                                <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+                                <div className="grid gap-4 text-sm text-muted-foreground md:grid-cols-2">
                                     <p>
                                         <span className="font-medium text-foreground">Tiempo generación:</span>{" "}
                                         {typeof draft.generation_time_ms === "number"
@@ -206,7 +206,7 @@ export function InspectionDraftsTab({
                                     </p>
                                 </div>
 
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
                                     <Button
                                         type="button"
                                         onClick={() => onSave(draft.id, currentText)}

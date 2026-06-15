@@ -13,4 +13,6 @@ export const inspectionsKeys = {
     reportStatus: (draftId: number) => [...inspectionsKeys.all, "report-status", draftId] as const,
     reportHistory: (draftId: number, limit: number) =>
         [...inspectionsKeys.all, "report-history", draftId, limit] as const,
+    productivityByInspection: (inspectionId: number) =>
+        [...inspectionsKeys.all, "productivity", inspectionId] as const,
 }

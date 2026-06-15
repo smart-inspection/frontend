@@ -15,7 +15,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-
 import {
     createInspectionInitialValues,
     type CreateInspectionFormErrors,
@@ -54,7 +53,7 @@ export function CreateInspectionForm({
 
     const completedRequired = requiredFields.filter((field) => {
         const value = values[field]
-        return typeof value === "string" && value.trim().length > 0
+        return typeof value === "string" ? value.trim().length > 0 : false
     }).length
 
     const updateField = <K extends keyof CreateInspectionFormValues>(
@@ -71,9 +70,7 @@ export function CreateInspectionForm({
         const nextErrors = validateCreateInspection(values)
         setErrors(nextErrors)
 
-        if (Object.keys(nextErrors).length > 0) {
-            return
-        }
+        if (Object.keys(nextErrors).length > 0) return
 
         await onSubmit({
             code: values.code.trim(),
@@ -88,7 +85,7 @@ export function CreateInspectionForm({
     }
 
     return (
-        <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
+        <form onSubmit={handleSubmit} className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.85fr)]">
             <div className="space-y-6">
                 <Card className="border-border/60 shadow-sm">
                     <CardHeader>
@@ -97,7 +94,8 @@ export function CreateInspectionForm({
                             Datos principales
                         </CardTitle>
                         <CardDescription>
-                            Completa la información base que el backend ya requiere para registrar una inspección.
+                            Completa la información base que el backend ya requiere para registrar una
+                            inspección.
                         </CardDescription>
                     </CardHeader>
 
@@ -117,9 +115,9 @@ export function CreateInspectionForm({
                         </div>
 
                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="client_name">Cliente</Label>
+                            <Label htmlFor="clientname">Cliente</Label>
                             <Input
-                                id="client_name"
+                                id="clientname"
                                 value={values.client_name}
                                 onChange={(e) => updateField("client_name", e.target.value)}
                                 placeholder="Transportes del Norte S.A.C."
@@ -131,9 +129,9 @@ export function CreateInspectionForm({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="equipment_type">Tipo de equipo</Label>
+                            <Label htmlFor="equipmenttype">Tipo de equipo</Label>
                             <Input
-                                id="equipment_type"
+                                id="equipmenttype"
                                 value={values.equipment_type}
                                 onChange={(e) => updateField("equipment_type", e.target.value)}
                                 placeholder="Semirremolque"
@@ -145,9 +143,9 @@ export function CreateInspectionForm({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="inspection_type">Tipo de inspección</Label>
+                            <Label htmlFor="inspectiontype">Tipo de inspección</Label>
                             <Input
-                                id="inspection_type"
+                                id="inspectiontype"
                                 value={values.inspection_type}
                                 onChange={(e) => updateField("inspection_type", e.target.value)}
                                 placeholder="Inspección visual"
@@ -159,9 +157,9 @@ export function CreateInspectionForm({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="inspection_date">Fecha de inspección</Label>
+                            <Label htmlFor="inspectiondate">Fecha de inspección</Label>
                             <Input
-                                id="inspection_date"
+                                id="inspectiondate"
                                 type="date"
                                 value={values.inspection_date}
                                 onChange={(e) => updateField("inspection_date", e.target.value)}
@@ -188,15 +186,16 @@ export function CreateInspectionForm({
                     <CardHeader>
                         <CardTitle>Datos complementarios</CardTitle>
                         <CardDescription>
-                            Estos campos son opcionales, pero ayudan a dejar lista la cabecera del detalle.
+                            Estos campos son opcionales, pero ayudan a dejar lista la cabecera del
+                            detalle.
                         </CardDescription>
                     </CardHeader>
 
                     <CardContent className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                            <Label htmlFor="requested_by">Solicitado por</Label>
+                            <Label htmlFor="requestedby">Solicitado por</Label>
                             <Input
-                                id="requested_by"
+                                id="requestedby"
                                 value={values.requested_by ?? ""}
                                 onChange={(e) => updateField("requested_by", e.target.value)}
                                 placeholder="Área de operaciones"
@@ -204,9 +203,9 @@ export function CreateInspectionForm({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="responsible_inspector">Inspector responsable</Label>
+                            <Label htmlFor="responsibleinspector">Inspector responsable</Label>
                             <Input
-                                id="responsible_inspector"
+                                id="responsibleinspector"
                                 value={values.responsible_inspector ?? ""}
                                 onChange={(e) => updateField("responsible_inspector", e.target.value)}
                                 placeholder="Ing. Juan Pérez"

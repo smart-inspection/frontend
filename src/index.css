@@ -135,3 +135,21 @@ body {
     @apply font-sans;
   }
 }
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    overflow-x: hidden;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    min-width: 0;
+  }
+}
