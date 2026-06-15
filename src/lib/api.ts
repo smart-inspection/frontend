@@ -10,6 +10,15 @@ function get_auth_header(): Record<string, string> {
     return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+function get_ngrok_header(): Record<string, string> {
+    const is_ngrok_url =
+        API_BASE_URL.includes(".ngrok-free.dev") ||
+        API_BASE_URL.includes(".ngrok.io") ||
+        API_BASE_URL.includes(".ngrok.app")
+
+    return is_ngrok_url ? { "ngrok-skip-browser-warning": "true" } : {}
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const is_form_data = init?.body instanceof FormData
 
@@ -17,6 +26,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ...init,
         headers: {
             ...(is_form_data ? {} : { "Content-Type": "application/json" }),
+            ...get_ngrok_header(),
             ...get_auth_header(),
             ...init?.headers,
         },
@@ -70,13 +80,13 @@ export function apiPostForm<T>(path: string, form_data: FormData) {
     return request<T>(path, { method: "POST", body: form_data })
 }
 
-export function resolveBackendFileUrl(path?: string | null): string {
+export function resolve_backend_file_url(path?: string | null): string {
     if (!path) return ""
     if (/https?:\/\//i.test(path)) return path
     const normalized_path = path.startsWith("/") ? path : `/${path}`
     return `${API_BASE_URL}${normalized_path}`
 }
 
-export function buildReportExportUrl(type: "pdf" | "docx", draft_id: number): string {
+export function build_report_export_url(type: "pdf" | "docx", draft_id: number): string {
     return `${API_BASE_URL}/report-export/${type}/${draft_id}`
 }
