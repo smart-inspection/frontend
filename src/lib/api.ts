@@ -80,13 +80,13 @@ export function apiPostForm<T>(path: string, form_data: FormData) {
     return request<T>(path, { method: "POST", body: form_data })
 }
 
-export function resolve_backend_file_url(path?: string | null): string {
+export function resolveBackendFileUrl(path?: string | null): string {
     if (!path) return ""
     if (/https?:\/\//i.test(path)) return path
     const normalized_path = path.startsWith("/") ? path : `/${path}`
     return `${API_BASE_URL}${normalized_path}`
 }
 
-export function build_report_export_url(type: "pdf" | "docx", draft_id: number): string {
+export function buildReportExportUrl(type: "pdf" | "docx", draft_id: number): string {
     return `${API_BASE_URL}/report-export/${type}/${draft_id}`
 }
