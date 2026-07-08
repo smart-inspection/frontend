@@ -28,7 +28,6 @@ import {
     INSPECTION_TYPE_MAX_LENGTH,
     LOCATION_MAX_LENGTH,
     REQUESTED_BY_MAX_LENGTH,
-    RESPONSIBLE_INSPECTOR_MAX_LENGTH,
     inspection_date_bounds,
 } from "../types/create-inspection.types"
 
@@ -95,7 +94,7 @@ export function CreateInspectionForm({
             inspection_date: values.inspection_date,
             location: emptyToNull(values.location),
             requested_by: emptyToNull(values.requested_by),
-            responsible_inspector: emptyToNull(values.responsible_inspector),
+            responsible_inspector_id: values.responsible_inspector_id ?? null,
         })
     }
 
@@ -230,40 +229,25 @@ export function CreateInspectionForm({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="responsible_inspector">Inspector responsable</Label>
-                            {inspector_options.length > 0 ? (
-                                <select
-                                    id="responsible_inspector"
-                                    value={values.responsible_inspector ?? ""}
-                                    onChange={(e) =>
-                                        updateField("responsible_inspector", e.target.value)
-                                    }
-                                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                                >
-                                    <option value="">Selecciona un inspector</option>
-                                    {inspector_options.map((inspector) => (
-                                        <option key={inspector.id} value={inspector.full_name}>
-                                            {inspector.full_name}
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <Input
-                                    id="responsible_inspector"
-                                    value={values.responsible_inspector ?? ""}
-                                    maxLength={RESPONSIBLE_INSPECTOR_MAX_LENGTH}
-                                    onChange={(e) =>
-                                        updateField("responsible_inspector", e.target.value)
-                                    }
-                                    placeholder="Ing. Juan Pérez"
-                                    aria-invalid={Boolean(errors.responsible_inspector)}
-                                />
-                            )}
-                            {errors.responsible_inspector ? (
-                                <p className="text-xs text-destructive">
-                                    {errors.responsible_inspector}
-                                </p>
-                            ) : null}
+                            <Label htmlFor="responsible_inspector_id">Inspector responsable</Label>
+                            <select
+                                id="responsible_inspector_id"
+                                value={values.responsible_inspector_id ?? ""}
+                                onChange={(e) =>
+                                    updateField(
+                                        "responsible_inspector_id",
+                                        e.target.value ? Number(e.target.value) : null,
+                                    )
+                                }
+                                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                            >
+                                <option value="">Selecciona un inspector</option>
+                                {inspector_options.map((inspector) => (
+                                    <option key={inspector.id} value={inspector.id}>
+                                        {inspector.full_name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </CardContent>
                 </Card>

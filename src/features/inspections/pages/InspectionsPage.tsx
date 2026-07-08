@@ -23,6 +23,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 
+import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
+import { get_inspector_display_name } from "../types/inspections.utils"
+
 function InspectionsPageSkeleton() {
     return (
         <div className="space-y-4">
@@ -68,6 +71,7 @@ function EmptyState() {
 
 export default function InspectionsPage() {
     const { data = [], isLoading, isError, error } = useInspectionsQuery()
+    const { data: inspectors = [] } = useAdminUsersQuery()
     const [search, setSearch] = useState("")
 
     const filteredInspections = useMemo(() => {
@@ -81,7 +85,7 @@ export default function InspectionsPage() {
                 inspection.client_name,
                 inspection.equipment_type,
                 inspection.inspection_type,
-                inspection.responsible_inspector,
+                get_inspector_display_name(inspectors, inspection.responsible_inspector_id),
                 inspection.status,
             ]
                 .filter(Boolean)
@@ -206,8 +210,8 @@ export default function InspectionsPage() {
                                         <div className="flex items-center gap-2">
                                             <UserRound className="h-4 w-4 shrink-0" />
                                             <span className="truncate">
-                        {inspection.responsible_inspector || "Inspector no asignado"}
-                      </span>
+                                                {get_inspector_display_name(inspectors, inspection.responsible_inspector_id)}
+                                            </span>
                                         </div>
                                     </div>
                                 </CardHeader>

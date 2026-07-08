@@ -7,7 +7,7 @@ export type Inspection = {
     inspection_date: string
     location: string | null
     requested_by: string | null
-    responsible_inspector: string | null
+    responsible_inspector_id: number | null
     status: string
     created_at: string
     updated_at: string
@@ -21,7 +21,7 @@ export type InspectionCreateInput = {
     inspection_date: string
     location?: string | null
     requested_by?: string | null
-    responsible_inspector?: string | null
+    responsible_inspector_id?: number | null
     status?: string
 }
 

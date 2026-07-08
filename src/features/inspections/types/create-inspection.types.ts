@@ -14,7 +14,7 @@ export const createInspectionInitialValues: CreateInspectionFormValues = {
     inspection_date: "",
     location: "",
     requested_by: "",
-    responsible_inspector: "",
+    responsible_inspector_id: null,
 }
 
 export const CODE_MIN_LENGTH = 3
@@ -24,10 +24,9 @@ export const EQUIPMENT_TYPE_MAX_LENGTH = 60
 export const INSPECTION_TYPE_MAX_LENGTH = 60
 export const LOCATION_MAX_LENGTH = 100
 export const REQUESTED_BY_MAX_LENGTH = 80
-export const RESPONSIBLE_INSPECTOR_MAX_LENGTH = 80
 
-export const INSPECTION_DATE_MIN_DAYS_BEFORE = 30
-export const INSPECTION_DATE_MAX_DAYS_AFTER = 180
+export const INSPECTION_DATE_MIN_DAYS_BEFORE = 60
+export const INSPECTION_DATE_MAX_DAYS_AFTER = 30
 
 function get_date_bounds(): { min: string; max: string } {
     const today = new Date()
@@ -64,7 +63,6 @@ export function validateCreateInspection(
     const inspection_date = values.inspection_date.trim()
     const location = values.location?.trim() ?? ""
     const requested_by = values.requested_by?.trim() ?? ""
-    const responsible_inspector = values.responsible_inspector?.trim() ?? ""
 
     if (!code) {
         errors.code = "El código es obligatorio."
@@ -142,16 +140,6 @@ export function validateCreateInspection(
             errors.requested_by = `Este campo no debe superar los ${REQUESTED_BY_MAX_LENGTH} caracteres.`
         } else if (!LETTERS_SPACES_REGEX.test(requested_by)) {
             errors.requested_by = "Este campo solo admite letras y espacios."
-        }
-    }
-
-    if (responsible_inspector) {
-        if (has_malicious_pattern(responsible_inspector)) {
-            errors.responsible_inspector = "Este campo contiene caracteres no permitidos."
-        } else if (responsible_inspector.length > RESPONSIBLE_INSPECTOR_MAX_LENGTH) {
-            errors.responsible_inspector = `Este campo no debe superar los ${RESPONSIBLE_INSPECTOR_MAX_LENGTH} caracteres.`
-        } else if (!LETTERS_SPACES_REGEX.test(responsible_inspector)) {
-            errors.responsible_inspector = "Este campo solo admite letras y espacios."
         }
     }
 

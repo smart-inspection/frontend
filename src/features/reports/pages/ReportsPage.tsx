@@ -24,7 +24,16 @@ import {
 } from "@/features/inspections/types/inspections.utils"
 import type { Inspection } from "@/features/inspections/types/inspections.types"
 
-function InspectionReportRow({ inspection }: { inspection: Inspection }) {
+import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
+import { get_inspector_display_name } from "@/features/inspections/types/inspections.utils"
+
+function InspectionReportRow({
+                                 inspection,
+                                 inspectors,
+                             }: {
+    inspection: Inspection
+    inspectors: { id: number; full_name: string }[]
+}) {
     const drafts_query = useInspectionDraftsQuery(inspection.id)
     const drafts = drafts_query.data ?? []
 
@@ -46,7 +55,7 @@ function InspectionReportRow({ inspection }: { inspection: Inspection }) {
                 {inspection.client_name}
             </TableCell>
             <TableCell className="hidden sm:table-cell text-muted-foreground">
-                {inspection.responsible_inspector ?? "Sin asignar"}
+                {get_inspector_display_name(inspectors, inspection.responsible_inspector_id)}
             </TableCell>
             <TableCell className="hidden md:table-cell text-muted-foreground">
                 {formatInspectionDate(inspection.inspection_date)}
@@ -81,6 +90,7 @@ function InspectionReportRow({ inspection }: { inspection: Inspection }) {
 
 export function ReportsPage() {
     const { data: current_user } = useCurrentUserQuery()
+    const { data: inspectors = [] } = useAdminUsersQuery()
     const { data: inspections = [], isLoading, isError } = useInspectionsQuery()
 
     const [search, set_search] = useState("")
@@ -94,8 +104,8 @@ export function ReportsPage() {
         if (is_inspector && current_user?.full_name) {
             result = result.filter(
                 (i) =>
-                    i.responsible_inspector
-                        ?.toLowerCase()
+                    get_inspector_display_name(inspectors, i.responsible_inspector_id)
+                        .toLowerCase()
                         .includes(current_user.full_name.toLowerCase()),
             )
         }
@@ -106,7 +116,9 @@ export function ReportsPage() {
                 (i) =>
                     i.code.toLowerCase().includes(q) ||
                     i.client_name.toLowerCase().includes(q) ||
-                    i.responsible_inspector?.toLowerCase().includes(q),
+                    get_inspector_display_name(inspectors, i.responsible_inspector_id)
+                        .toLowerCase()
+                        .includes(q),
             )
         }
 
@@ -223,6 +235,7 @@ export function ReportsPage() {
                                     <InspectionReportRow
                                         key={inspection.id}
                                         inspection={inspection}
+                                        inspectors={inspectors}
                                     />
                                 ))
                             )}
