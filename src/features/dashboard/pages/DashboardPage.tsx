@@ -53,6 +53,42 @@ function get_status_variant(status: string) {
     }
 }
 
+const MIN_START_OFFSET_DAYS = 30
+const MAX_END_OFFSET_DAYS = 180
+
+function format_date_input(date: Date) {
+    return date.toISOString().slice(0, 10)
+}
+
+function get_date_bounds() {
+    const today = new Date()
+    const min_date = new Date(today)
+    min_date.setDate(min_date.getDate() - MIN_START_OFFSET_DAYS)
+    const max_date = new Date(today)
+    max_date.setDate(max_date.getDate() + MAX_END_OFFSET_DAYS)
+    return {
+        min: format_date_input(min_date),
+        max: format_date_input(max_date),
+    }
+}
+
+function validate_date_range(
+    start: string,
+    end: string,
+    bounds: { min: string; max: string },
+) {
+    if (start && (start < bounds.min || start > bounds.max)) {
+        return `La fecha de inicio debe estar entre ${bounds.min} y ${bounds.max}.`
+    }
+    if (end && (end < bounds.min || end > bounds.max)) {
+        return `La fecha de fin debe estar entre ${bounds.min} y ${bounds.max}.`
+    }
+    if (start && end && end < start) {
+        return "La fecha de fin no puede ser anterior a la fecha de inicio."
+    }
+    return null
+}
+
 export function DashboardPage() {
     const { data: current_user } = useCurrentUserQuery()
 
@@ -64,6 +100,19 @@ export function DashboardPage() {
     const [draft_end_date, set_draft_end_date] = useState("")
     const [draft_inspector, set_draft_inspector] = useState("")
     const [draft_status, set_draft_status] = useState("")
+    const [date_error, set_date_error] = useState<string | null>(null)
+
+    const date_bounds = useMemo(() => get_date_bounds(), [])
+
+    function handle_start_date_change(value: string) {
+        set_draft_start_date(value)
+        set_date_error(validate_date_range(value, draft_end_date, date_bounds))
+    }
+
+    function handle_end_date_change(value: string) {
+        set_draft_end_date(value)
+        set_date_error(validate_date_range(draft_start_date, value, date_bounds))
+    }
 
     const resolved_inspector = is_inspector
         ? (current_user?.full_name ?? "")
@@ -71,12 +120,12 @@ export function DashboardPage() {
 
     const filters = useMemo(
         () => ({
-            startDate: draft_start_date || undefined,
-            endDate: draft_end_date || undefined,
+            startDate: !date_error && draft_start_date ? draft_start_date : undefined,
+            endDate: !date_error && draft_end_date ? draft_end_date : undefined,
             inspector: resolved_inspector || undefined,
             operationalStatus: draft_status || undefined,
         }),
-        [draft_start_date, draft_end_date, resolved_inspector, draft_status],
+        [draft_start_date, draft_end_date, resolved_inspector, draft_status, date_error],
     )
 
     const { data, isLoading, isError, error } = useProductivityDashboardQuery(filters)
@@ -105,6 +154,7 @@ export function DashboardPage() {
         set_draft_end_date("")
         if (!is_inspector) set_draft_inspector("")
         set_draft_status("")
+        set_date_error(null)
     }
 
     return (
@@ -136,7 +186,10 @@ export function DashboardPage() {
                         <Input
                             type="date"
                             value={draft_start_date}
-                            onChange={(e) => set_draft_start_date(e.target.value)}
+                            min={date_bounds.min}
+                            max={date_bounds.max}
+                            onChange={(e) => handle_start_date_change(e.target.value)}
+                            className="[&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                         />
                     </div>
 
@@ -145,7 +198,10 @@ export function DashboardPage() {
                         <Input
                             type="date"
                             value={draft_end_date}
-                            onChange={(e) => set_draft_end_date(e.target.value)}
+                            min={draft_start_date || date_bounds.min}
+                            max={date_bounds.max}
+                            onChange={(e) => handle_end_date_change(e.target.value)}
+                            className="[&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                         />
                     </div>
 
@@ -188,6 +244,12 @@ export function DashboardPage() {
                             ))}
                         </select>
                     </div>
+
+                    {date_error ? (
+                        <div className="sm:col-span-2 xl:col-span-4">
+                            <p className="text-xs text-destructive">{date_error}</p>
+                        </div>
+                    ) : null}
 
                     <div className="sm:col-span-2 xl:col-span-4 flex justify-end">
                         <button
