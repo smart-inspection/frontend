@@ -17,3 +17,5 @@ export const auth_storage = {
         return !!localStorage.getItem(TOKEN_KEY)
     },
 }
+export default class authstorage {
+}
