@@ -562,7 +562,7 @@ export default function InspectionDetailPage() {
                                 <div className="flex items-center gap-2">
                                     <UserRound className="h-4 w-4" />
                                     <span>
-                                        {inspection.responsible_inspector || "Inspector no asignado"}
+                                        {inspection.responsible_inspector_id || "Inspector no asignado"}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -850,7 +850,7 @@ export default function InspectionDetailPage() {
                             Inspector responsable
                         </p>
                         <p className="mt-1 text-sm font-medium">
-                            {inspection.responsible_inspector || "No asignado"}
+                            {inspection.responsible_inspector_id || "No asignado"}
                         </p>
                     </div>
                 </CardContent>

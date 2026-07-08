@@ -56,3 +56,14 @@ export function formatInspectionDate(value?: string | null) {
         return value
     }
 }
+
+type InspectorLike = { id: number; full_name: string }
+
+export function get_inspector_display_name(
+    inspectors: InspectorLike[] | undefined,
+    inspector_id: number | null | undefined,
+): string {
+    if (!inspector_id) return "Inspector no asignado"
+    const inspector = inspectors?.find((u) => u.id === inspector_id)
+    return inspector?.full_name ?? "Inspector no asignado"
+}

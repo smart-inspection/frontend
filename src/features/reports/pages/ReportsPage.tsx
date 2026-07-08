@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { useCurrentUserQuery } from "@/features/auth/api/auth.queries"
-import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
 import { useInspectionsQuery } from "@/features/inspections/api/inspections.queries"
 import { useInspectionDraftsQuery } from "@/features/inspections/api/inspections.queries"
 import {
@@ -24,14 +23,16 @@ import {
     getInspectionStatusVariant,
 } from "@/features/inspections/types/inspections.utils"
 import type { Inspection } from "@/features/inspections/types/inspections.types"
-import type { AdminUser } from "@/features/admin/types/admin.types"
+
+import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
+import { get_inspector_display_name } from "@/features/inspections/types/inspections.utils"
 
 function InspectionReportRow({
                                  inspection,
-                                 inspectorName,
+                                 inspectors,
                              }: {
     inspection: Inspection
-    inspectorName: string | null
+    inspectors: { id: number; full_name: string }[]
 }) {
     const drafts_query = useInspectionDraftsQuery(inspection.id)
     const drafts = drafts_query.data ?? []
@@ -54,7 +55,7 @@ function InspectionReportRow({
                 {inspection.client_name}
             </TableCell>
             <TableCell className="hidden sm:table-cell text-muted-foreground">
-                {inspectorName ?? "Sin asignar"}
+                {get_inspector_display_name(inspectors, inspection.responsible_inspector_id)}
             </TableCell>
             <TableCell className="hidden md:table-cell text-muted-foreground">
                 {formatInspectionDate(inspection.inspection_date)}
@@ -87,21 +88,10 @@ function InspectionReportRow({
     )
 }
 
-function resolve_inspector_name(
-    inspection: Inspection,
-    admin_users: AdminUser[],
-): string | null {
-    if (!inspection.responsible_inspector_id) return null
-    return (
-        admin_users.find((user) => user.id === inspection.responsible_inspector_id)
-            ?.full_name ?? null
-    )
-}
-
 export function ReportsPage() {
     const { data: current_user } = useCurrentUserQuery()
+    const { data: inspectors = [] } = useAdminUsersQuery()
     const { data: inspections = [], isLoading, isError } = useInspectionsQuery()
-    const { data: admin_users = [] } = useAdminUsersQuery()
 
     const [search, set_search] = useState("")
     const [status_filter, set_status_filter] = useState("")
@@ -111,22 +101,25 @@ export function ReportsPage() {
     const filtered = useMemo(() => {
         let result = inspections
 
-        if (is_inspector && current_user?.id) {
+        if (is_inspector && current_user?.full_name) {
             result = result.filter(
-                (i) => i.responsible_inspector_id === current_user.id,
+                (i) =>
+                    get_inspector_display_name(inspectors, i.responsible_inspector_id)
+                        .toLowerCase()
+                        .includes(current_user.full_name.toLowerCase()),
             )
         }
 
         if (search.trim()) {
             const q = search.trim().toLowerCase()
-            result = result.filter((i) => {
-                const inspector_name = resolve_inspector_name(i, admin_users)
-                return (
+            result = result.filter(
+                (i) =>
                     i.code.toLowerCase().includes(q) ||
                     i.client_name.toLowerCase().includes(q) ||
-                    (inspector_name?.toLowerCase().includes(q) ?? false)
-                )
-            })
+                    get_inspector_display_name(inspectors, i.responsible_inspector_id)
+                        .toLowerCase()
+                        .includes(q),
+            )
         }
 
         if (status_filter) {
@@ -136,7 +129,7 @@ export function ReportsPage() {
         }
 
         return result
-    }, [inspections, is_inspector, current_user, search, status_filter, admin_users])
+    }, [inspections, is_inspector, current_user, search, status_filter])
 
     const STATUS_OPTIONS = [
         { value: "", label: "Todos los estados" },
@@ -151,35 +144,35 @@ export function ReportsPage() {
             <div className="space-y-1">
                 <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight sm:text-2xl">
                     <FileText className="h-5 w-5" />
-                    Informes de inspección
+                    {is_inspector ? "Mis informes" : "Informes y trazabilidad"}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                    Consulta el estado de los informes generados a partir de las inspecciones registradas.
+                    {is_inspector
+                        ? "Informes de tus inspecciones asignadas con su estado actual."
+                        : "Listado global de inspecciones con estado del informe y trazabilidad de cambios."}
                 </p>
             </div>
 
             <Card className="border-border/60 shadow-sm">
-                <CardHeader>
-                    <CardTitle className="text-base">Filtros</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3 sm:flex-row">
+                <CardContent className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center">
                     <div className="relative flex-1">
-                        <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
+                            className="pl-9"
+                            placeholder="Buscar por código, cliente o inspector…"
                             value={search}
                             onChange={(e) => set_search(e.target.value)}
-                            placeholder="Buscar por código, cliente o inspector"
-                            className="pl-8"
                         />
                     </div>
+
                     <select
                         value={status_filter}
                         onChange={(e) => set_status_filter(e.target.value)}
-                        className="flex h-9 w-full sm:w-56 rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                        className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-52"
                     >
-                        {STATUS_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
+                        {STATUS_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                                {opt.label}
                             </option>
                         ))}
                     </select>
@@ -188,7 +181,10 @@ export function ReportsPage() {
 
             <Card className="border-border/60 shadow-sm">
                 <CardHeader>
-                    <CardTitle className="text-base">Inspecciones e informes</CardTitle>
+                    <CardTitle className="text-base">
+                        {filtered.length} inspección
+                        {filtered.length !== 1 ? "es" : ""}
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -200,27 +196,38 @@ export function ReportsPage() {
                                 <TableHead className="hidden md:table-cell">Fecha</TableHead>
                                 <TableHead>Estado inspección</TableHead>
                                 <TableHead>Estado informe</TableHead>
-                                <TableHead className="hidden lg:table-cell text-center">Borradores</TableHead>
-                                <TableHead className="text-right">Acción</TableHead>
+                                <TableHead className="hidden lg:table-cell text-center">
+                                    Borradores
+                                </TableHead>
+                                <TableHead className="text-right" />
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="py-6 text-center text-sm text-muted-foreground">
-                                        Cargando informes...
+                                    <TableCell
+                                        colSpan={8}
+                                        className="py-8 text-center text-sm text-muted-foreground"
+                                    >
+                                        Cargando informes…
                                     </TableCell>
                                 </TableRow>
                             ) : isError ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="py-6 text-center text-sm text-destructive">
-                                        No se pudo cargar la lista de inspecciones.
+                                    <TableCell
+                                        colSpan={8}
+                                        className="py-8 text-center text-sm text-destructive"
+                                    >
+                                        No se pudo cargar el listado de informes.
                                     </TableCell>
                                 </TableRow>
                             ) : filtered.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="py-6 text-center text-sm text-muted-foreground">
-                                        No hay inspecciones que coincidan con el filtro.
+                                    <TableCell
+                                        colSpan={8}
+                                        className="py-8 text-center text-sm text-muted-foreground"
+                                    >
+                                        No hay inspecciones que coincidan con los filtros.
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -228,7 +235,7 @@ export function ReportsPage() {
                                     <InspectionReportRow
                                         key={inspection.id}
                                         inspection={inspection}
-                                        inspectorName={resolve_inspector_name(inspection, admin_users)}
+                                        inspectors={inspectors}
                                     />
                                 ))
                             )}
@@ -239,3 +246,5 @@ export function ReportsPage() {
         </section>
     )
 }
+
+export default ReportsPage
