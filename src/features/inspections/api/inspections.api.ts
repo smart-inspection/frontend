@@ -71,8 +71,8 @@ function mapInspection(raw: any): Inspection {
         inspection_date: asString(pickFirst(raw?.inspection_date, raw?.inspectiondate)),
         location: asNullableString(raw?.location),
         requested_by: asNullableString(pickFirst(raw?.requested_by, raw?.requestedby)),
-        responsible_inspector: asNullableString(
-            pickFirst(raw?.responsible_inspector, raw?.responsibleinspector),
+        responsible_inspector_id: asNullableNumber(
+            pickFirst(raw?.responsible_inspector_id, raw?.responsibleinspectorid),
         ),
         status: asString(raw?.status, "draft"),
         created_at: asString(pickFirst(raw?.created_at, raw?.createdat)),
@@ -345,14 +345,11 @@ export async function getInspectionById(inspectionId: number): Promise<Inspectio
     return mapInspection(response)
 }
 
-export async function createInspection(
-    payload: InspectionCreateInput,
-): Promise<Inspection> {
-    const response = await apiPost<any>("/inspections", {
+export async function createInspection(payload: InspectionCreateInput): Promise<Inspection> {
+    const response = await apiPost<any>("inspections", {
         status: "draft",
         ...payload,
     })
-
     return mapInspection(response)
 }
 
