@@ -46,6 +46,8 @@ import {
 } from "../api/inspection-requests.queries"
 import type { InspectionRequest } from "../types/inspection-request.types"
 
+import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
+
 type ConversionFormValues = {
     code: string
     clientname: string
@@ -54,7 +56,7 @@ type ConversionFormValues = {
     inspectiondate: string
     location: string
     requestedby: string
-    responsibleinspector: string
+    responsibleinspectorid: string
 }
 
 type ConversionFormErrors = Partial<Record<keyof ConversionFormValues, string>>
@@ -87,7 +89,7 @@ function buildInitialValues(request: InspectionRequest): ConversionFormValues {
         inspectiondate: request.requestedDate ?? "",
         location: request.location,
         requestedby: request.contactName,
-        responsibleinspector: "",
+        responsibleinspectorid: "",
     }
 }
 
@@ -105,8 +107,8 @@ function validateForm(values: ConversionFormValues): ConversionFormErrors {
     if (!values.inspectiondate.trim()) {
         errors.inspectiondate = "La fecha programada es obligatoria."
     }
-    if (!values.responsibleinspector.trim()) {
-        errors.responsibleinspector = "El inspector responsable es obligatorio."
+    if (!values.responsibleinspectorid.trim()) {
+        errors.responsibleinspectorid = "El inspector responsable es obligatorio."
     }
 
     return errors
@@ -140,6 +142,8 @@ export function InspectionRequestsPage() {
     const { data = [], isLoading, isError, error } = useInspectionRequestsQuery()
     const createInspectionMutation = useCreateInspectionMutation()
     const convertInspectionRequestMutation = useConvertInspectionRequestMutation()
+
+    const { data: inspectors = [] } = useAdminUsersQuery()
 
     const [search, setSearch] = useState("")
     const [selectedRequest, setSelectedRequest] = useState<InspectionRequest | null>(null)
@@ -227,7 +231,9 @@ export function InspectionRequestsPage() {
             inspection_date: formValues.inspectiondate,
             location: emptyToNull(formValues.location),
             requested_by: emptyToNull(formValues.requestedby),
-            responsible_inspector: emptyToNull(formValues.responsibleinspector),
+            responsible_inspector_id: formValues.responsibleinspectorid
+                ? Number(formValues.responsibleinspectorid)
+                : null,
         })
 
         await convertInspectionRequestMutation.mutateAsync({
@@ -492,19 +498,28 @@ export function InspectionRequestsPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="responsibleinspector">Inspector responsable</Label>
-                                    <Input
-                                        id="responsibleinspector"
-                                        value={formValues.responsibleinspector}
+                                    <Label htmlFor="responsibleinspectorid">Inspector responsable</Label>
+                                    <select
+                                        id="responsibleinspectorid"
+                                        value={formValues.responsibleinspectorid}
                                         onChange={(event) =>
-                                            updateField("responsibleinspector", event.target.value)
+                                            updateField("responsibleinspectorid", event.target.value)
                                         }
-                                        placeholder="Inspector asignado"
-                                        aria-invalid={Boolean(formErrors.responsibleinspector)}
-                                    />
-                                    {formErrors.responsibleinspector ? (
+                                        aria-invalid={Boolean(formErrors.responsibleinspectorid)}
+                                        className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                                    >
+                                        <option value="">Selecciona un inspector</option>
+                                        {inspectors
+                                            .filter((u) => u.role === "inspector")
+                                            .map((inspector) => (
+                                                <option key={inspector.id} value={inspector.id}>
+                                                    {inspector.full_name}
+                                                </option>
+                                            ))}
+                                    </select>
+                                    {formErrors.responsibleinspectorid ? (
                                         <p className="text-xs text-destructive">
-                                            {formErrors.responsibleinspector}
+                                            {formErrors.responsibleinspectorid}
                                         </p>
                                     ) : null}
                                 </div>
