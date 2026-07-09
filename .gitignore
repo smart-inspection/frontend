@@ -27,3 +27,4 @@ dist/
 .idea/
 .env
 .env.example
+/src/test/
