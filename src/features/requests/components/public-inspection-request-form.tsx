@@ -24,6 +24,8 @@ import {
     validateInspectionRequestForm,
 } from "../types/inspection-request.types"
 
+import { INSPECTION_REQUEST_MAX_LENGTHS, PHONE_NUMERIC_REGEX } from '../types/inspection-request.types';
+
 function emptyToNull(value?: string): string | null {
     const normalized = value?.trim() ?? ""
     return normalized ? normalized : null
@@ -170,12 +172,22 @@ export function PublicInspectionRequestForm() {
                             <Label htmlFor="contactPhone">Teléfono</Label>
                             <Input
                                 id="contactPhone"
+                                type="tel"
+                                inputMode="numeric"
+                                maxLength={INSPECTION_REQUEST_MAX_LENGTHS.contactPhone}
                                 value={values.contactPhone}
-                                onChange={(event) =>
-                                    updateField("contactPhone", event.target.value)
-                                }
+                                onChange={(event) => {
+                                    const digitsOnly = event.target.value.replace(/\D/g, '');
+                                    if (PHONE_NUMERIC_REGEX.test(digitsOnly)) {
+                                        updateField('contactPhone', digitsOnly);
+                                    }
+                                }}
                                 placeholder="999888777"
+                                aria-invalid={Boolean(errors.contactPhone)}
                             />
+                            {errors.contactPhone ? (
+                                <p className="text-xs text-destructive">{errors.contactPhone}</p>
+                            ) : null}
                         </div>
 
                         <div className="space-y-2">
@@ -200,10 +212,10 @@ export function PublicInspectionRequestForm() {
                             <Input
                                 id="requestedDate"
                                 type="date"
+                                min={new Date().toISOString().slice(0, 10)}
+                                max={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
                                 value={values.requestedDate}
-                                onChange={(event) =>
-                                    updateField("requestedDate", event.target.value)
-                                }
+                                onChange={(event) => updateField('requestedDate', event.target.value)}
                             />
                         </div>
 
