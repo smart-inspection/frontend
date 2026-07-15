@@ -1,6 +1,19 @@
+export const service_type_options = [
+    "Inspección técnica",
+    "INSPECCIÓN VISUAL (VT) - PARTICULAS MAGNETICAS (MT)",
+] as const
+
+export const equipment_type_options = [
+    "Semirremolque",
+    "Tracto",
+] as const
+
+export type ServiceType = (typeof service_type_options)[number]
+export type EquipmentType = (typeof equipment_type_options)[number]
+
 export type InspectionRequestStatus = "pending" | "converted"
 
-export interface InspectionRequest {
+export type InspectionRequest = {
     id: number
     companyName: string
     contactName: string
@@ -17,20 +30,20 @@ export interface InspectionRequest {
     updatedAt: string
 }
 
-export interface InspectionRequestCreateInput {
+export type InspectionRequestCreateInput = {
     companyName: string
     contactName: string
-    contactEmail?: string | null
-    contactPhone?: string | null
-    requestedDate?: string | null
+    contactEmail: string | null
+    contactPhone: string | null
+    requestedDate: string | null
     location: string
-    serviceType?: string | null
-    equipmentType?: string | null
-    notes?: string | null
+    serviceType: ServiceType
+    equipmentType: EquipmentType
+    notes: string | null
     status?: InspectionRequestStatus
 }
 
-export interface InspectionRequestFormValues {
+export type InspectionRequestFormValues = {
     companyName: string
     contactName: string
     contactEmail: string
@@ -46,100 +59,99 @@ export type InspectionRequestFormErrors = Partial<
     Record<keyof InspectionRequestFormValues, string>
 >
 
-export const INSPECTION_REQUEST_MAX_LENGTHS = {
-    companyName: 150,
-    contactName: 100,
-    contactEmail: 150,
-    contactPhone: 20,
-    location: 200,
-    serviceType: 100,
-    equipmentType: 100,
-    notes: 500,
-} as const;
-
-export const PHONE_NUMERIC_REGEX = /^[0-9]*$/;
-
-export const NO_SCRIPT_PATTERN = /<script|<\/script|javascript:|on\w+\s*=|<iframe|<img/i;
-
 export const inspectionRequestInitialValues: InspectionRequestFormValues = {
-    companyName: '',
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
-    requestedDate: '',
-    location: '',
-    serviceType: '',
-    equipmentType: '',
-    notes: '',
-};
+    companyName: "",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+    requestedDate: "",
+    location: "",
+    serviceType: "",
+    equipmentType: "",
+    notes: "",
+}
 
-function hasScriptInjection(value: string): boolean {
-    return NO_SCRIPT_PATTERN.test(value);
+const email_pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const phone_pattern = /^\d{7,15}$/
+const letters_pattern = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/
+const malicious_pattern =
+    /<\s*\/?\s*(script|iframe|object|embed|svg|img|style|link|meta)|javascript\s*:|on\w+\s*=|data\s*:\s*text\/html|eval\s*\(|document\.|window\./i
+
+function has_valid_length(value: string, max_length: number): boolean {
+    return value.trim().length <= max_length
+}
+
+function contains_malicious_content(value: string): boolean {
+    return malicious_pattern.test(value)
+}
+
+function has_only_letters(value: string): boolean {
+    return letters_pattern.test(value.trim())
 }
 
 export function validateInspectionRequestForm(
     values: InspectionRequestFormValues,
 ): InspectionRequestFormErrors {
-    const errors: InspectionRequestFormErrors = {};
+    const errors: InspectionRequestFormErrors = {}
+    const today = new Date().toISOString().slice(0, 10)
 
     if (!values.companyName.trim()) {
-        errors.companyName = 'La empresa es obligatoria.';
-    } else if (values.companyName.length > INSPECTION_REQUEST_MAX_LENGTHS.companyName) {
-        errors.companyName = `Máximo ${INSPECTION_REQUEST_MAX_LENGTHS.companyName} caracteres.`;
-    } else if (hasScriptInjection(values.companyName)) {
-        errors.companyName = 'El texto contiene caracteres no permitidos.';
+        errors.companyName = "La empresa es obligatoria."
+    } else if (!has_only_letters(values.companyName)) {
+        errors.companyName = "La empresa solo puede contener letras y espacios."
+    } else if (contains_malicious_content(values.companyName)) {
+        errors.companyName = "La empresa contiene caracteres no permitidos."
+    } else if (!has_valid_length(values.companyName, 150)) {
+        errors.companyName = "La empresa no puede superar los 150 caracteres."
     }
 
     if (!values.contactName.trim()) {
-        errors.contactName = 'El contacto es obligatorio.';
-    } else if (values.contactName.length > INSPECTION_REQUEST_MAX_LENGTHS.contactName) {
-        errors.contactName = `Máximo ${INSPECTION_REQUEST_MAX_LENGTHS.contactName} caracteres.`;
-    } else if (hasScriptInjection(values.contactName)) {
-        errors.contactName = 'El texto contiene caracteres no permitidos.';
+        errors.contactName = "El contacto es obligatorio."
+    } else if (!has_only_letters(values.contactName)) {
+        errors.contactName = "El contacto solo puede contener letras y espacios."
+    } else if (contains_malicious_content(values.contactName)) {
+        errors.contactName = "El contacto contiene caracteres no permitidos."
+    } else if (!has_valid_length(values.contactName, 150)) {
+        errors.contactName = "El contacto no puede superar los 150 caracteres."
     }
 
-    if (values.contactEmail.trim()) {
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (values.contactEmail.length > INSPECTION_REQUEST_MAX_LENGTHS.contactEmail) {
-            errors.contactEmail = `Máximo ${INSPECTION_REQUEST_MAX_LENGTHS.contactEmail} caracteres.`;
-        } else if (!emailPattern.test(values.contactEmail.trim())) {
-            errors.contactEmail = 'Ingresa un correo válido.';
-        }
+    if (values.contactEmail.trim() && !email_pattern.test(values.contactEmail.trim())) {
+        errors.contactEmail = "Ingresa un correo electrónico válido."
+    } else if (contains_malicious_content(values.contactEmail)) {
+        errors.contactEmail = "El correo contiene caracteres no permitidos."
+    } else if (!has_valid_length(values.contactEmail, 150)) {
+        errors.contactEmail = "El correo no puede superar los 150 caracteres."
     }
 
-    if (values.contactPhone.trim()) {
-        if (!PHONE_NUMERIC_REGEX.test(values.contactPhone.trim())) {
-            errors.contactPhone = 'El teléfono solo debe contener números.';
-        } else if (values.contactPhone.length > INSPECTION_REQUEST_MAX_LENGTHS.contactPhone) {
-            errors.contactPhone = `Máximo ${INSPECTION_REQUEST_MAX_LENGTHS.contactPhone} dígitos.`;
-        }
+    if (values.contactPhone.trim() && !phone_pattern.test(values.contactPhone.trim())) {
+        errors.contactPhone = "El teléfono solo debe contener entre 7 y 15 números."
+    }
+
+    if (values.requestedDate && values.requestedDate < today) {
+        errors.requestedDate = "La fecha solicitada no puede ser anterior a hoy."
     }
 
     if (!values.location.trim()) {
-        errors.location = 'La ubicación es obligatoria.';
-    } else if (values.location.length > INSPECTION_REQUEST_MAX_LENGTHS.location) {
-        errors.location = `Máximo ${INSPECTION_REQUEST_MAX_LENGTHS.location} caracteres.`;
-    } else if (hasScriptInjection(values.location)) {
-        errors.location = 'El texto contiene caracteres no permitidos.';
+        errors.location = "La ubicación es obligatoria."
+    } else if (contains_malicious_content(values.location)) {
+        errors.location = "La ubicación contiene caracteres no permitidos."
+    } else if (!has_valid_length(values.location, 200)) {
+        errors.location = "La ubicación no puede superar los 200 caracteres."
     }
 
-    if (values.serviceType.length > INSPECTION_REQUEST_MAX_LENGTHS.serviceType) {
-        errors.serviceType = `Máximo ${INSPECTION_REQUEST_MAX_LENGTHS.serviceType} caracteres.`;
-    } else if (hasScriptInjection(values.serviceType)) {
-        errors.serviceType = 'El texto contiene caracteres no permitidos.';
+    if (!service_type_options.includes(values.serviceType as ServiceType)) {
+        errors.serviceType = "Selecciona un tipo de servicio válido."
     }
 
-    if (values.equipmentType.length > INSPECTION_REQUEST_MAX_LENGTHS.equipmentType) {
-        errors.equipmentType = `Máximo ${INSPECTION_REQUEST_MAX_LENGTHS.equipmentType} caracteres.`;
-    } else if (hasScriptInjection(values.equipmentType)) {
-        errors.equipmentType = 'El texto contiene caracteres no permitidos.';
+    if (!equipment_type_options.includes(values.equipmentType as EquipmentType)) {
+        errors.equipmentType = "Selecciona un tipo de equipo válido."
     }
 
-    if (values.notes.length > INSPECTION_REQUEST_MAX_LENGTHS.notes) {
-        errors.notes = `Máximo ${INSPECTION_REQUEST_MAX_LENGTHS.notes} caracteres.`;
-    } else if (hasScriptInjection(values.notes)) {
-        errors.notes = 'El texto contiene caracteres no permitidos.';
+    if (contains_malicious_content(values.notes)) {
+        errors.notes = "Las notas contienen contenido no permitido."
+    } else if (!has_valid_length(values.notes, 5000)) {
+        errors.notes = "Las notas no pueden superar los 5000 caracteres."
     }
 
-    return errors;
+    return errors
 }
