@@ -25,6 +25,7 @@ import {
     updateInspectionField,
     convertInspectionRequest,
     startProductivity,
+    finishProductivity,
     get_productivity_by_inspection,
 } from "./inspections.api"
 
@@ -151,6 +152,22 @@ export function useStartProductivityMutation(inspectionId: number) {
     return useMutation({
         mutationFn: () => startProductivity(inspectionId),
         onSuccess: async () => {
+            await queryClient.invalidateQueries({
+                queryKey: inspectionsKeys.detail(inspectionId),
+            })
+        },
+    })
+}
+
+export function useFinishProductivityMutation(inspectionId: number) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: (finishedAt?: string) => finishProductivity(inspectionId, finishedAt),
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({
+                queryKey: inspectionsKeys.productivityByInspection(inspectionId),
+            })
             await queryClient.invalidateQueries({
                 queryKey: inspectionsKeys.detail(inspectionId),
             })
@@ -301,8 +318,9 @@ export function useUpdateReportDraftMutation(inspectionId: number) {
             queryClient.invalidateQueries({
                 queryKey: inspectionsKeys.reportStatus(variables.draftId),
             })
+            // Usar el mismo limit (20) que emplea InspectionDetailPage para evitar cache miss
             queryClient.invalidateQueries({
-                queryKey: inspectionsKeys.reportHistory(variables.draftId, 50),
+                queryKey: inspectionsKeys.reportHistory(variables.draftId, 20),
             })
         },
     })
