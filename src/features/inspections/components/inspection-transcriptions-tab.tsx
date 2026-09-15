@@ -20,6 +20,7 @@ import type {
     TranscriptionCreateInput,
 } from "@/features/inspections/types/inspections.types"
 import {AudioRecorderButton} from "@/features/inspections/components/inspection-audio-recorder";
+import { AiConfidenceBadge } from "@/features/inspections/components/ai-confidence-badge"
 
 type InspectionTranscriptionsTabProps = {
     evidences: Evidence[]
@@ -146,6 +147,7 @@ export function InspectionTranscriptionsTab({
                                         setEvidenceId(String(evidence.id))
                                         setSourcePath(evidence.file_path)
                                     }}
+                                    className="min-h-[44px] min-w-[44px]"
                                 >
                                     Usar evidencia #{evidence.id}
                                 </Button>
@@ -166,7 +168,7 @@ export function InspectionTranscriptionsTab({
                         </div>
 
                         <div className="md:col-span-2 flex justify-end">
-                            <Button type="submit" disabled={isCreating || !sourcePath.trim()}>
+                            <Button type="submit" disabled={isCreating || !sourcePath.trim()} className="min-h-[44px] min-w-[44px]">
                                 {isCreating ? "Registrando..." : "Crear transcripción"}
                             </Button>
                         </div>
@@ -203,7 +205,11 @@ export function InspectionTranscriptionsTab({
                                         </CardDescription>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <AiConfidenceBadge
+                                            level={transcription.confidence_level}
+                                            score={transcription.confidence}
+                                        />
                                         <Badge variant={transcription.processed ? "default" : "outline"}>
                                             {transcription.processed ? "Procesada" : "Pendiente"}
                                         </Badge>
@@ -252,18 +258,20 @@ export function InspectionTranscriptionsTab({
                                                 <span className="font-medium text-foreground">Modelo:</span>{" "}
                                                 {transcription.model_name}
                                             </p>
-                                            <p>
-                                                <span className="font-medium text-foreground">Confianza:</span>{" "}
-                                                {typeof transcription.confidence === "number"
-                                                    ? `${Math.round(transcription.confidence * 100)}%`
-                                                    : "Sin dato"}
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium text-foreground">Confianza IA:</span>
+                                                <AiConfidenceBadge
+                                                    level={transcription.confidence_level}
+                                                    score={transcription.confidence}
+                                                />
+                                            </div>
                                         </div>
 
                                         <Button
                                             type="button"
                                             onClick={() => onSave(transcription.id, currentValue)}
                                             disabled={savingTranscriptionId === transcription.id}
+                                            className="min-h-[44px] min-w-[44px]"
                                         >
                                             <Save className="h-4 w-4" />
                                             {savingTranscriptionId === transcription.id

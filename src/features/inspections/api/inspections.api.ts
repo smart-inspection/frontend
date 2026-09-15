@@ -8,13 +8,15 @@ import {
 } from "@/lib/api"
 
 import type {
+    ConfidenceLevel,
     Evidence,
     EvidenceCreateInput,
     EvidenceOcrResponse,
     Inspection,
     InspectionCreateInput,
     InspectionField,
-    InspectionFieldCreateInput, InspectionRequestConvertInput,
+    InspectionFieldCreateInput,
+    InspectionRequestConvertInput,
     LlmReportGenerateInput,
     OcrExtractResponse,
     OcrValidationItem,
@@ -131,6 +133,9 @@ function mapEvidence(raw: RawRecord): Evidence {
             pickFirst(raw?.ocr_last_processed_at, raw?.ocrlastprocessedat),
         ),
         uploaded_at: asString(pickFirst(raw?.uploaded_at, raw?.uploadedat)),
+        accessible_alt_text: asNullableString(
+            pickFirst(raw?.accessible_alt_text, raw?.accessiblealttext),
+        ),
     }
 }
 
@@ -178,6 +183,9 @@ function mapOcrValidationItem(raw: RawRecord): OcrValidationItem {
             pickFirst(raw?.validation_message, raw?.validationmessage),
         ),
         confidence: asNullableNumber(raw?.confidence),
+        confidence_level: asNullableString(
+            pickFirst(raw?.confidence_level, raw?.confidencelevel),
+        ) as ConfidenceLevel | null,
     }
 }
 
@@ -221,6 +229,9 @@ function mapTranscription(raw: RawRecord): Transcription {
         raw_text: asNullableString(pickFirst(raw?.raw_text, raw?.rawtext)),
         final_text: asNullableString(pickFirst(raw?.final_text, raw?.finaltext)),
         confidence: asNullableNumber(raw?.confidence),
+        confidence_level: asNullableString(
+            pickFirst(raw?.confidence_level, raw?.confidencelevel),
+        ) as ConfidenceLevel | null,
         processed: asBoolean(raw?.processed),
         edited_manually: asBoolean(
             pickFirst(raw?.edited_manually, raw?.editedmanually),
@@ -249,6 +260,10 @@ function mapReportDraft(raw: RawRecord): ReportDraft {
         ),
         created_at: asString(pickFirst(raw?.created_at, raw?.createdat)),
         updated_at: asString(pickFirst(raw?.updated_at, raw?.updatedat)),
+        is_ai_generated: asBoolean(
+            pickFirst(raw?.is_ai_generated, raw?.isaigenerated),
+        ),
+        disclaimer: asNullableString(raw?.disclaimer),
     }
 }
 

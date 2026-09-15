@@ -59,6 +59,8 @@ export type InspectionFieldCreateInput = {
     confidence?: number | null
 }
 
+export type ConfidenceLevel = "high" | "medium" | "low"
+
 export type Evidence = {
     id: number
     inspection_id: number
@@ -81,6 +83,7 @@ export type Evidence = {
     ocr_processed: boolean
     ocr_last_processed_at: string | null
     uploaded_at: string
+    accessible_alt_text?: string | null
 }
 
 export type EvidenceCreateInput = {
@@ -120,6 +123,7 @@ export type OcrValidationItem = {
     validation_status: string
     validation_message: string | null
     confidence: number | null
+    confidence_level?: ConfidenceLevel | null
 }
 
 export type OcrValidationSummary = {
@@ -147,6 +151,7 @@ export type Transcription = {
     raw_text: string | null
     final_text: string | null
     confidence: number | null
+    confidence_level?: ConfidenceLevel | null
     processed: boolean
     edited_manually: boolean
     created_at: string
@@ -177,6 +182,8 @@ export type ReportDraft = {
     generation_time_ms: number | null
     created_at: string
     updated_at: string
+    is_ai_generated?: boolean | null
+    disclaimer?: string | null
 }
 
 export type ReportDraftGenerateInput = {

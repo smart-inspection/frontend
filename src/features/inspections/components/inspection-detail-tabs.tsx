@@ -57,22 +57,40 @@ export function InspectionDetailTabs({
                 variant="line"
                 className="flex w-full justify-start gap-1 overflow-x-auto whitespace-nowrap rounded-none border-b pb-1"
             >
-                <TabsTrigger value="fields" className="min-h-[44px] shrink-0 px-3">
+                <TabsTrigger
+                    value="fields"
+                    className="min-h-[44px] shrink-0 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                     <ShieldCheck className="h-4 w-4" /> <span>Campos</span>
                 </TabsTrigger>
-                <TabsTrigger value="evidences" className="min-h-[44px] shrink-0 px-3">
+                <TabsTrigger
+                    value="evidences"
+                    className="min-h-[44px] shrink-0 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                     <FolderOpen className="h-4 w-4" /> <span>Evidencias</span>
                 </TabsTrigger>
-                <TabsTrigger value="ocr" className="min-h-[44px] shrink-0 px-3">
+                <TabsTrigger
+                    value="ocr"
+                    className="min-h-[44px] shrink-0 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                     <ScanSearch className="h-4 w-4" /> <span>OCR</span>
                 </TabsTrigger>
-                <TabsTrigger value="transcriptions" className="min-h-[44px] shrink-0 px-3">
+                <TabsTrigger
+                    value="transcriptions"
+                    className="min-h-[44px] shrink-0 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                     <Languages className="h-4 w-4" /> <span>Transcripciones</span>
                 </TabsTrigger>
-                <TabsTrigger value="drafts" className="min-h-[44px] shrink-0 px-3">
+                <TabsTrigger
+                    value="drafts"
+                    className="min-h-[44px] shrink-0 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                     <FileText className="h-4 w-4" /> <span>Borradores/Informes</span>
                 </TabsTrigger>
-                <TabsTrigger value="summary" className="min-h-[44px] shrink-0 px-3">
+                <TabsTrigger
+                    value="summary"
+                    className="min-h-[44px] shrink-0 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
                     <ClipboardList className="h-4 w-4" /> <span>Resumen</span>
                 </TabsTrigger>
             </TabsList>
