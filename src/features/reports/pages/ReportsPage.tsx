@@ -27,6 +27,84 @@ import type { Inspection } from "@/features/inspections/types/inspections.types"
 import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
 import { get_inspector_display_name } from "@/features/inspections/types/inspections.utils"
 
+function InspectionReportCard({
+    inspection,
+    inspectors,
+}: {
+    inspection: Inspection
+    inspectors: { id: number; full_name: string }[]
+}) {
+    const drafts_query = useInspectionDraftsQuery(inspection.id)
+    const drafts = drafts_query.data ?? []
+
+    const latest_draft = drafts.at(-1)
+    const report_status = latest_draft?.status ?? null
+    const draft_count = drafts.length
+
+    return (
+        <Card className="border-border/60 shadow-sm">
+            <CardHeader className="space-y-2 pb-2">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                        <Link
+                            to={`/inspections/${inspection.id}`}
+                            className="truncate text-base font-semibold text-foreground hover:underline hover:text-primary"
+                        >
+                            {inspection.code}
+                        </Link>
+                        <p className="truncate text-sm text-muted-foreground">
+                            {inspection.client_name}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        <Badge variant={getInspectionStatusVariant(inspection.status)}>
+                            {formatInspectionStatus(inspection.status)}
+                        </Badge>
+                        {report_status ? (
+                            <Badge variant={getInspectionStatusVariant(report_status)}>
+                                {formatInspectionStatus(report_status)}
+                            </Badge>
+                        ) : (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                                Sin informe
+                            </Badge>
+                        )}
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardContent className="space-y-3 pt-0 text-sm">
+                <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">Inspector:</span>
+                        <span className="truncate max-w-[60%] text-right">
+                            {get_inspector_display_name(inspectors, inspection.responsible_inspector_id)}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">Fecha inspección:</span>
+                        <span>{formatInspectionDate(inspection.inspection_date)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">Borradores generados:</span>
+                        <span>{draft_count > 0 ? draft_count : "0"}</span>
+                    </div>
+                </div>
+
+                <Button asChild variant="outline" className="min-h-[44px] w-full">
+                    <Link to={`/inspections/${inspection.id}`}>
+                        <span>Ver detalle e informe</span>
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                </Button>
+            </CardContent>
+        </Card>
+    )
+}
+
 function InspectionReportRow({
                                  inspection,
                                  inspectors,
@@ -78,7 +156,7 @@ function InspectionReportRow({
                 {draft_count > 0 ? draft_count : "—"}
             </TableCell>
             <TableCell className="text-right">
-                <Button asChild variant="ghost" size="sm">
+                <Button asChild variant="ghost" size="sm" className="min-h-[44px] min-w-[44px]">
                     <Link to={`/inspections/${inspection.id}`}>
                         <ArrowRight className="h-4 w-4" />
                     </Link>
@@ -186,61 +264,89 @@ export function ReportsPage() {
                         {filtered.length !== 1 ? "es" : ""}
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Código</TableHead>
-                                <TableHead>Cliente</TableHead>
-                                <TableHead className="hidden sm:table-cell">Inspector</TableHead>
-                                <TableHead className="hidden md:table-cell">Fecha</TableHead>
-                                <TableHead>Estado inspección</TableHead>
-                                <TableHead>Estado informe</TableHead>
-                                <TableHead className="hidden lg:table-cell text-center">
-                                    Borradores
-                                </TableHead>
-                                <TableHead className="text-right" />
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading ? (
+                <CardContent className="space-y-4">
+                    {/* Vista móvil: tarjetas verticales (< md) */}
+                    <div className="flex flex-col gap-3 md:hidden">
+                        {isLoading ? (
+                            <div className="py-8 text-center text-sm text-muted-foreground">
+                                Cargando informes…
+                            </div>
+                        ) : isError ? (
+                            <div className="py-8 text-center text-sm text-destructive">
+                                No se pudo cargar el listado de informes.
+                            </div>
+                        ) : filtered.length === 0 ? (
+                            <div className="py-8 text-center text-sm text-muted-foreground">
+                                No hay inspecciones que coincidan con los filtros.
+                            </div>
+                        ) : (
+                            filtered.map((inspection) => (
+                                <InspectionReportCard
+                                    key={inspection.id}
+                                    inspection={inspection}
+                                    inspectors={inspectors}
+                                />
+                            ))
+                        )}
+                    </div>
+
+                    {/* Vista escritorio / tablet: tabla tradicional con scroll horizontal (>= md) */}
+                    <div className="hidden md:block w-full overflow-x-auto rounded-lg border">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell
-                                        colSpan={8}
-                                        className="py-8 text-center text-sm text-muted-foreground"
-                                    >
-                                        Cargando informes…
-                                    </TableCell>
+                                    <TableHead>Código</TableHead>
+                                    <TableHead>Cliente</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Inspector</TableHead>
+                                    <TableHead className="hidden md:table-cell">Fecha</TableHead>
+                                    <TableHead>Estado inspección</TableHead>
+                                    <TableHead>Estado informe</TableHead>
+                                    <TableHead className="hidden lg:table-cell text-center">
+                                        Borradores
+                                    </TableHead>
+                                    <TableHead className="text-right" />
                                 </TableRow>
-                            ) : isError ? (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={8}
-                                        className="py-8 text-center text-sm text-destructive"
-                                    >
-                                        No se pudo cargar el listado de informes.
-                                    </TableCell>
-                                </TableRow>
-                            ) : filtered.length === 0 ? (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={8}
-                                        className="py-8 text-center text-sm text-muted-foreground"
-                                    >
-                                        No hay inspecciones que coincidan con los filtros.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filtered.map((inspection) => (
-                                    <InspectionReportRow
-                                        key={inspection.id}
-                                        inspection={inspection}
-                                        inspectors={inspectors}
-                                    />
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={8}
+                                            className="py-8 text-center text-sm text-muted-foreground"
+                                        >
+                                            Cargando informes…
+                                        </TableCell>
+                                    </TableRow>
+                                ) : isError ? (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={8}
+                                            className="py-8 text-center text-sm text-destructive"
+                                        >
+                                            No se pudo cargar el listado de informes.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filtered.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={8}
+                                            className="py-8 text-center text-sm text-muted-foreground"
+                                        >
+                                            No hay inspecciones que coincidan con los filtros.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filtered.map((inspection) => (
+                                        <InspectionReportRow
+                                            key={inspection.id}
+                                            inspection={inspection}
+                                            inspectors={inspectors}
+                                        />
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </section>

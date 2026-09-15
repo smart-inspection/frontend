@@ -360,58 +360,116 @@ export function DashboardPage() {
                         </CardTitle>
                     </CardHeader>
 
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    {!is_inspector && <TableHead>Inspector</TableHead>}
-                                    <TableHead>Asignadas</TableHead>
-                                    <TableHead>Completadas</TableHead>
-                                    <TableHead>Promedio</TableHead>
-                                    <TableHead>Cumplimiento</TableHead>
-                                </TableRow>
-                            </TableHeader>
+                    <CardContent className="space-y-4">
+                        {/* Vista móvil: tarjetas verticales (< md) */}
+                        <div className="flex flex-col gap-3 md:hidden">
+                            {isLoading ? (
+                                <div className="py-6 text-center text-sm text-muted-foreground">
+                                    Cargando productividad...
+                                </div>
+                            ) : by_inspector.length ? (
+                                by_inspector.map((item) => (
+                                    <Card key={item.inspectorName} className="border-border/60 shadow-none bg-muted/20">
+                                        <CardHeader className="space-y-2 pb-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                                {!is_inspector && (
+                                                    <p className="font-semibold text-foreground">
+                                                        {item.inspectorName}
+                                                    </p>
+                                                )}
+                                                <Badge
+                                                    variant={item.onTimePercentage >= 80 ? "default" : "secondary"}
+                                                    className="text-xs"
+                                                >
+                                                    {item.onTimePercentage.toFixed(1)}% en meta
+                                                </Badge>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="space-y-2 pt-0 text-xs">
+                                            <div className="grid grid-cols-2 gap-2 rounded-lg bg-background p-2.5 border">
+                                                <div>
+                                                    <span className="text-muted-foreground">Asignadas:</span>{" "}
+                                                    <span className="font-semibold text-foreground">
+                                                        {item.assignedInspections}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">Completadas:</span>{" "}
+                                                    <span className="font-semibold text-foreground">
+                                                        {item.completedReports}
+                                                    </span>
+                                                </div>
+                                                <div className="col-span-2 pt-1 border-t flex items-center justify-between">
+                                                    <span className="text-muted-foreground">Tiempo promedio:</span>{" "}
+                                                    <span className="font-medium text-foreground">
+                                                        {format_minutes(item.averageReportMinutes)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            ) : (
+                                <div className="py-6 text-center text-sm text-muted-foreground">
+                                    No hay registros para los filtros seleccionados.
+                                </div>
+                            )}
+                        </div>
 
-                            <TableBody>
-                                {isLoading ? (
+                        {/* Vista escritorio / tablet: tabla tradicional (>= md) */}
+                        <div className="hidden md:block w-full overflow-x-auto rounded-lg border">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell
-                                            colSpan={is_inspector ? 4 : 5}
-                                            className="py-6 text-center text-sm text-muted-foreground"
-                                        >
-                                            Cargando productividad...
-                                        </TableCell>
+                                        {!is_inspector && <TableHead>Inspector</TableHead>}
+                                        <TableHead>Asignadas</TableHead>
+                                        <TableHead>Completadas</TableHead>
+                                        <TableHead>Promedio</TableHead>
+                                        <TableHead>Cumplimiento</TableHead>
                                     </TableRow>
-                                ) : by_inspector.length ? (
-                                    by_inspector.map((item) => (
-                                        <TableRow key={item.inspectorName}>
-                                            {!is_inspector && (
-                                                <TableCell className="font-medium">
-                                                    {item.inspectorName}
-                                                </TableCell>
-                                            )}
-                                            <TableCell>{item.assignedInspections}</TableCell>
-                                            <TableCell>{item.completedReports}</TableCell>
-                                            <TableCell>
-                                                {format_minutes(item.averageReportMinutes)}
-                                            </TableCell>
-                                            <TableCell>
-                                                {item.onTimePercentage.toFixed(1)}%
+                                </TableHeader>
+
+                                <TableBody>
+                                    {isLoading ? (
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={is_inspector ? 4 : 5}
+                                                className="py-6 text-center text-sm text-muted-foreground"
+                                            >
+                                                Cargando productividad...
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={is_inspector ? 4 : 5}
-                                            className="py-6 text-center text-sm text-muted-foreground"
-                                        >
-                                            No hay registros para los filtros seleccionados.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                    ) : by_inspector.length ? (
+                                        by_inspector.map((item) => (
+                                            <TableRow key={item.inspectorName}>
+                                                {!is_inspector && (
+                                                    <TableCell className="font-medium">
+                                                        {item.inspectorName}
+                                                    </TableCell>
+                                                )}
+                                                <TableCell>{item.assignedInspections}</TableCell>
+                                                <TableCell>{item.completedReports}</TableCell>
+                                                <TableCell>
+                                                    {format_minutes(item.averageReportMinutes)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {item.onTimePercentage.toFixed(1)}%
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={is_inspector ? 4 : 5}
+                                                className="py-6 text-center text-sm text-muted-foreground"
+                                            >
+                                                No hay registros para los filtros seleccionados.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
 
