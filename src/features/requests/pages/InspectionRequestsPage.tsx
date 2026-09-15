@@ -1,18 +1,7 @@
 import { useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import {
-    ArrowRight,
-    CalendarDays,
-    CheckCircle2,
-    ClipboardList,
-    Loader2,
-    Search,
-    UserRound,
-} from "lucide-react"
+import { Link } from "react-router-dom"
+import { ArrowRight, Search } from "lucide-react"
 
-import { useCreateInspectionMutation } from "@/features/inspections/api/inspections.queries"
-
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     Card,
@@ -22,142 +11,32 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-} from "@/components/ui/sheet"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
 
-import {
-    useConvertInspectionRequestMutation,
-    useInspectionRequestsQuery,
-} from "../api/inspection-requests.queries"
+import { useInspectionRequestsQuery } from "../api/inspection-requests.queries"
+import { ConvertRequestSheet } from "../components/ConvertRequestSheet"
+import { InspectionRequestsPagination } from "../components/InspectionRequestsPagination"
+import { InspectionRequestsTable } from "../components/InspectionRequestsTable"
 import type { InspectionRequest } from "../types/inspection-request.types"
 
-import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
-
-type ConversionFormValues = {
-    code: string
-    clientname: string
-    inspectiontype: string
-    equipmenttype: string
-    inspectiondate: string
-    location: string
-    requestedby: string
-    responsibleinspectorid: string
-}
-
-type ConversionFormErrors = Partial<Record<keyof ConversionFormValues, string>>
-
-function formatDate(value?: string | null) {
-    if (!value) return "Sin fecha"
-
-    try {
-        return new Intl.DateTimeFormat("es-PE", {
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-        }).format(new Date(value))
-    } catch {
-        return value
-    }
-}
-
-function emptyToNull(value?: string) {
-    const normalized = value?.trim() ?? ""
-    return normalized ? normalized : null
-}
-
-function buildInitialValues(request: InspectionRequest): ConversionFormValues {
-    return {
-        code: "",
-        clientname: request.companyName,
-        inspectiontype: request.serviceType ?? "Inspección técnica",
-        equipmenttype: request.equipmentType ?? "",
-        inspectiondate: request.requestedDate ?? "",
-        location: request.location,
-        requestedby: request.contactName,
-        responsibleinspectorid: "",
-    }
-}
-
-function validateForm(values: ConversionFormValues): ConversionFormErrors {
-    const errors: ConversionFormErrors = {}
-
-    if (!values.code.trim()) errors.code = "El código es obligatorio."
-    if (!values.clientname.trim()) errors.clientname = "El cliente es obligatorio."
-    if (!values.inspectiontype.trim()) {
-        errors.inspectiontype = "El tipo de inspección es obligatorio."
-    }
-    if (!values.equipmenttype.trim()) {
-        errors.equipmenttype = "El tipo de equipo es obligatorio."
-    }
-    if (!values.inspectiondate.trim()) {
-        errors.inspectiondate = "La fecha programada es obligatoria."
-    }
-    if (!values.responsibleinspectorid.trim()) {
-        errors.responsibleinspectorid = "El inspector responsable es obligatorio."
-    }
-
-    return errors
-}
-
-function getStatusLabel(status: string) {
-    switch (status) {
-        case "pending":
-            return "Pendiente"
-        case "converted":
-            return "Convertida"
-        default:
-            return status
-    }
-}
-
-function getStatusVariant(status: string) {
-    switch (status) {
-        case "pending":
-            return "outline" as const
-        case "converted":
-            return "secondary" as const
-        default:
-            return "outline" as const
-    }
-}
+const PAGE_SIZE = 10
 
 export function InspectionRequestsPage() {
-    const navigate = useNavigate()
-
     const { data = [], isLoading, isError, error } = useInspectionRequestsQuery()
-    const createInspectionMutation = useCreateInspectionMutation()
-    const convertInspectionRequestMutation = useConvertInspectionRequestMutation()
-
-    const { data: inspectors = [] } = useAdminUsersQuery()
 
     const [search, setSearch] = useState("")
+    const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "converted">("all")
+    const [currentPage, setCurrentPage] = useState(1)
     const [selectedRequest, setSelectedRequest] = useState<InspectionRequest | null>(null)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
-    const [formValues, setFormValues] = useState<ConversionFormValues | null>(null)
-    const [formErrors, setFormErrors] = useState<ConversionFormErrors>({})
 
     const filteredRequests = useMemo(() => {
         const term = search.trim().toLowerCase()
 
-        if (!term) return data
+        return data.filter((request) => {
+            if (statusFilter !== "all" && request.status !== statusFilter) return false
+            if (!term) return true
 
-        return data.filter((request) =>
-            [
+            return [
                 request.companyName,
                 request.contactName,
                 request.contactEmail,
@@ -170,82 +49,25 @@ export function InspectionRequestsPage() {
                 .filter(Boolean)
                 .join(" ")
                 .toLowerCase()
-                .includes(term),
-        )
-    }, [data, search])
+                .includes(term)
+        })
+    }, [data, search, statusFilter])
 
-    const createError =
-        createInspectionMutation.error instanceof Error
-            ? createInspectionMutation.error.message
-            : null
-
-    const convertError =
-        convertInspectionRequestMutation.error instanceof Error
-            ? convertInspectionRequestMutation.error.message
-            : null
-
-    const serverError = createError ?? convertError
+    const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE))
+    const paginatedRequests = useMemo(() => {
+        const start = (currentPage - 1) * PAGE_SIZE
+        return filteredRequests.slice(start, start + PAGE_SIZE)
+    }, [filteredRequests, currentPage])
 
     function handleOpenConvert(request: InspectionRequest) {
         if (request.status === "converted") return
-
         setSelectedRequest(request)
-        setFormValues(buildInitialValues(request))
-        setFormErrors({})
         setIsSheetOpen(true)
     }
 
-    function handleCloseSheet(nextOpen: boolean) {
-        setIsSheetOpen(nextOpen)
-
-        if (!nextOpen) {
-            setSelectedRequest(null)
-            setFormValues(null)
-            setFormErrors({})
-        }
-    }
-
-    function updateField<K extends keyof ConversionFormValues>(
-        field: K,
-        value: ConversionFormValues[K],
-    ) {
-        setFormValues((prev) => (prev ? { ...prev, [field]: value } : prev))
-        setFormErrors((prev) => ({ ...prev, [field]: undefined }))
-    }
-
-    async function handleConvert(event: React.FormEvent<HTMLFormElement>) {
-        event.preventDefault()
-
-        if (!selectedRequest || !formValues) return
-
-        const errors = validateForm(formValues)
-        setFormErrors(errors)
-
-        if (Object.keys(errors).length > 0) return
-
-        const createdInspection = await createInspectionMutation.mutateAsync({
-            code: formValues.code.trim(),
-            client_name: formValues.clientname.trim(),
-            equipment_type: formValues.equipmenttype.trim(),
-            inspection_type: formValues.inspectiontype.trim(),
-            inspection_date: formValues.inspectiondate,
-            location: emptyToNull(formValues.location),
-            requested_by: emptyToNull(formValues.requestedby),
-            responsible_inspector_id: formValues.responsibleinspectorid
-                ? Number(formValues.responsibleinspectorid)
-                : null,
-        })
-
-        await convertInspectionRequestMutation.mutateAsync({
-            inspectionRequestId: selectedRequest.id,
-            payload: {
-                inspection_id: createdInspection.id,
-                status: "converted",
-            },
-        })
-
-        handleCloseSheet(false)
-        navigate(`/inspections/${createdInspection.id}`)
+    function handleCloseSheet(open: boolean) {
+        setIsSheetOpen(open)
+        if (!open) setSelectedRequest(null)
     }
 
     return (
@@ -261,7 +83,7 @@ export function InspectionRequestsPage() {
                             </p>
                         </div>
 
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" className="min-h-[44px]">
                             <Link to="/solicitar" target="_blank" rel="noreferrer">
                                 Abrir landing pública
                                 <ArrowRight className="h-4 w-4" />
@@ -280,301 +102,65 @@ export function InspectionRequestsPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-4">
-                    <div className="relative max-w-md">
-                        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Buscar solicitud..."
-                            className="pl-9"
-                        />
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="relative w-full max-w-md">
+                            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value)
+                                    setCurrentPage(1)
+                                }}
+                                placeholder="Buscar solicitud..."
+                                className="pl-9"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                            {(["all", "pending", "converted"] as const).map((filter) => (
+                                <Button
+                                    key={filter}
+                                    variant={statusFilter === filter ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => {
+                                        setStatusFilter(filter)
+                                        setCurrentPage(1)
+                                    }}
+                                    className="min-h-[36px] text-xs capitalize"
+                                >
+                                    {filter === "all" ? "Todas" : filter === "pending" ? "Pendientes" : "Convertidas"}
+                                </Button>
+                            ))}
+                        </div>
                     </div>
 
-                    {isError ? (
+                    {isError && (
                         <div className="rounded-lg border border-destructive/30 px-4 py-3 text-sm text-destructive">
-                            {error instanceof Error
-                                ? error.message
-                                : "No se pudieron cargar las solicitudes."}
+                            {error instanceof Error ? error.message : "No se pudieron cargar las solicitudes."}
                         </div>
-                    ) : null}
+                    )}
 
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Empresa</TableHead>
-                                <TableHead>Contacto</TableHead>
-                                <TableHead>Ubicación</TableHead>
-                                <TableHead>Fecha solicitada</TableHead>
-                                <TableHead>Estado</TableHead>
-                                <TableHead className="text-right">Acción</TableHead>
-                            </TableRow>
-                        </TableHeader>
+                    <InspectionRequestsTable
+                        requests={paginatedRequests}
+                        isLoading={isLoading}
+                        onOpenConvert={handleOpenConvert}
+                    />
 
-                        <TableBody>
-                            {isLoading ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
-                                        Cargando solicitudes...
-                                    </TableCell>
-                                </TableRow>
-                            ) : null}
-
-                            {!isLoading && filteredRequests.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
-                                        No hay solicitudes registradas.
-                                    </TableCell>
-                                </TableRow>
-                            ) : null}
-
-                            {!isLoading
-                                ? filteredRequests.map((request) => {
-                                    const isConverted = request.status === "converted"
-
-                                    return (
-                                        <TableRow key={request.id}>
-                                            <TableCell className="font-medium">
-                                                <div className="space-y-1">
-                                                    <p>{request.companyName}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Solicitud #{request.id}
-                                                    </p>
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell>
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <UserRound className="h-4 w-4 text-muted-foreground" />
-                                                        <span>{request.contactName}</span>
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {request.contactEmail ??
-                                                            request.contactPhone ??
-                                                            "Sin contacto adicional"}
-                                                    </p>
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell>{request.location}</TableCell>
-
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                                                    <span>{formatDate(request.requestedDate)}</span>
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell>
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <Badge variant={getStatusVariant(request.status)}>
-                                                        {getStatusLabel(request.status)}
-                                                    </Badge>
-
-                                                    {request.inspectionId ? (
-                                                        <Badge variant="secondary">
-                                                            Inspección #{request.inspectionId}
-                                                        </Badge>
-                                                    ) : null}
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell className="text-right">
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => handleOpenConvert(request)}
-                                                    disabled={isConverted}
-                                                    variant={isConverted ? "outline" : "default"}
-                                                >
-                                                    {isConverted ? (
-                                                        <>
-                                                            <CheckCircle2 className="h-4 w-4" />
-                                                            Convertida
-                                                        </>
-                                                    ) : (
-                                                        "Convertir"
-                                                    )}
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })
-                                : null}
-                        </TableBody>
-                    </Table>
+                    <InspectionRequestsPagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={filteredRequests.length}
+                        pageSize={PAGE_SIZE}
+                        onPageChange={setCurrentPage}
+                    />
                 </CardContent>
             </Card>
 
-            <Sheet open={isSheetOpen} onOpenChange={handleCloseSheet}>
-                <SheetContent side="right" className="w-full sm:max-w-xl">
-                    <SheetHeader>
-                        <SheetTitle>Convertir solicitud en inspección</SheetTitle>
-                        <SheetDescription>
-                            Completa los datos operativos mínimos para programar la inspección.
-                        </SheetDescription>
-                    </SheetHeader>
-
-                    {selectedRequest && formValues ? (
-                        <form onSubmit={handleConvert} className="flex h-full flex-col gap-4 p-4">
-                            <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-                                <p className="font-medium">{selectedRequest.companyName}</p>
-                                <p className="text-muted-foreground">
-                                    Solicitud #{selectedRequest.id} · {selectedRequest.location}
-                                </p>
-                            </div>
-
-                            {serverError ? (
-                                <div className="rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive">
-                                    {serverError}
-                                </div>
-                            ) : null}
-
-                            <div className="grid gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="code">Código</Label>
-                                    <Input
-                                        id="code"
-                                        value={formValues.code}
-                                        onChange={(event) => updateField("code", event.target.value)}
-                                        placeholder="INSP-2026-001"
-                                        aria-invalid={Boolean(formErrors.code)}
-                                    />
-                                    {formErrors.code ? (
-                                        <p className="text-xs text-destructive">{formErrors.code}</p>
-                                    ) : null}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="clientname">Cliente</Label>
-                                    <Input
-                                        id="clientname"
-                                        value={formValues.clientname}
-                                        onChange={(event) => updateField("clientname", event.target.value)}
-                                        aria-invalid={Boolean(formErrors.clientname)}
-                                    />
-                                    {formErrors.clientname ? (
-                                        <p className="text-xs text-destructive">{formErrors.clientname}</p>
-                                    ) : null}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="inspectiontype">Tipo de inspección</Label>
-                                    <Input
-                                        id="inspectiontype"
-                                        value={formValues.inspectiontype}
-                                        onChange={(event) => updateField("inspectiontype", event.target.value)}
-                                        aria-invalid={Boolean(formErrors.inspectiontype)}
-                                    />
-                                    {formErrors.inspectiontype ? (
-                                        <p className="text-xs text-destructive">{formErrors.inspectiontype}</p>
-                                    ) : null}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="equipmenttype">Tipo de equipo</Label>
-                                    <Input
-                                        id="equipmenttype"
-                                        value={formValues.equipmenttype}
-                                        onChange={(event) => updateField("equipmenttype", event.target.value)}
-                                        aria-invalid={Boolean(formErrors.equipmenttype)}
-                                    />
-                                    {formErrors.equipmenttype ? (
-                                        <p className="text-xs text-destructive">{formErrors.equipmenttype}</p>
-                                    ) : null}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="inspectiondate">Fecha programada</Label>
-                                    <Input
-                                        id="inspectiondate"
-                                        type="date"
-                                        value={formValues.inspectiondate}
-                                        onChange={(event) => updateField("inspectiondate", event.target.value)}
-                                        aria-invalid={Boolean(formErrors.inspectiondate)}
-                                    />
-                                    {formErrors.inspectiondate ? (
-                                        <p className="text-xs text-destructive">{formErrors.inspectiondate}</p>
-                                    ) : null}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="responsibleinspectorid">Inspector responsable</Label>
-                                    <select
-                                        id="responsibleinspectorid"
-                                        value={formValues.responsibleinspectorid}
-                                        onChange={(event) =>
-                                            updateField("responsibleinspectorid", event.target.value)
-                                        }
-                                        aria-invalid={Boolean(formErrors.responsibleinspectorid)}
-                                        className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                                    >
-                                        <option value="">Selecciona un inspector</option>
-                                        {inspectors
-                                            .filter((u) => u.role === "inspector")
-                                            .map((inspector) => (
-                                                <option key={inspector.id} value={inspector.id}>
-                                                    {inspector.full_name}
-                                                </option>
-                                            ))}
-                                    </select>
-                                    {formErrors.responsibleinspectorid ? (
-                                        <p className="text-xs text-destructive">
-                                            {formErrors.responsibleinspectorid}
-                                        </p>
-                                    ) : null}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="location">Ubicación</Label>
-                                    <Input
-                                        id="location"
-                                        value={formValues.location}
-                                        onChange={(event) => updateField("location", event.target.value)}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="requestedby">Solicitante</Label>
-                                    <Input
-                                        id="requestedby"
-                                        value={formValues.requestedby}
-                                        onChange={(event) => updateField("requestedby", event.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            <SheetFooter className="mt-auto px-0">
-                                <div className="flex w-full items-center justify-between gap-3">
-                                    <p className="text-xs text-muted-foreground">
-                                        Al convertir, la solicitud quedará en estado convertido.
-                                    </p>
-
-                                    <Button
-                                        type="submit"
-                                        disabled={
-                                            createInspectionMutation.isPending ||
-                                            convertInspectionRequestMutation.isPending
-                                        }
-                                    >
-                                        {createInspectionMutation.isPending ||
-                                        convertInspectionRequestMutation.isPending ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                Convirtiendo...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <ClipboardList className="h-4 w-4" />
-                                                Crear inspección
-                                            </>
-                                        )}
-                                    </Button>
-                                </div>
-                            </SheetFooter>
-                        </form>
-                    ) : null}
-                </SheetContent>
-            </Sheet>
+            <ConvertRequestSheet
+                isOpen={isSheetOpen}
+                onOpenChange={handleCloseSheet}
+                request={selectedRequest}
+            />
         </section>
     )
 }
