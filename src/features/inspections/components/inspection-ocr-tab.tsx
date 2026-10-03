@@ -15,6 +15,8 @@ import {
     getValidationBadgeVariant,
     getValidationLabel,
 } from "@/features/inspections/utils/inspection-detail.utils"
+import { AiConfidenceBadge } from "./ai-confidence-badge"
+import type { ConfidenceLevel } from "../types/inspections.types"
 
 type OcrResultItem = {
     field_id: number
@@ -25,6 +27,8 @@ type OcrResultItem = {
     ocr_value?: string | null
     final_value?: string | null
     validation_message?: string | null
+    confidence?: number | null
+    confidence_level?: ConfidenceLevel | null
 }
 
 type OcrValidationResult = {
@@ -66,7 +70,7 @@ export function InspectionOcrTab({
                     </p>
                 </div>
 
-                <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+                <Button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="min-h-[44px] min-w-[44px]">
                     {mutation.isPending ? (
                         <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -144,13 +148,19 @@ export function InspectionOcrTab({
                                                 </p>
                                             </div>
 
-                                            <Badge
-                                                variant={getValidationBadgeVariant(
-                                                    item.validation_status,
-                                                )}
-                                            >
-                                                {getValidationLabel(item.validation_status)}
-                                            </Badge>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <AiConfidenceBadge
+                                                    level={item.confidence_level}
+                                                    score={item.confidence}
+                                                />
+                                                <Badge
+                                                    variant={getValidationBadgeVariant(
+                                                        item.validation_status,
+                                                    )}
+                                                >
+                                                    {getValidationLabel(item.validation_status)}
+                                                </Badge>
+                                            </div>
                                         </div>
 
                                         <div className="grid gap-3 md:grid-cols-3">

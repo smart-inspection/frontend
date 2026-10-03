@@ -1,6 +1,19 @@
+export const service_type_options = [
+    "Inspección técnica",
+    "INSPECCIÓN VISUAL (VT) - PARTICULAS MAGNETICAS (MT)",
+] as const
+
+export const equipment_type_options = [
+    "Semirremolque",
+    "Tracto",
+] as const
+
+export type ServiceType = (typeof service_type_options)[number]
+export type EquipmentType = (typeof equipment_type_options)[number]
+
 export type InspectionRequestStatus = "pending" | "converted"
 
-export interface InspectionRequest {
+export type InspectionRequest = {
     id: number
     companyName: string
     contactName: string
@@ -17,20 +30,22 @@ export interface InspectionRequest {
     updatedAt: string
 }
 
-export interface InspectionRequestCreateInput {
+export type InspectionRequestCreateInput = {
     companyName: string
     contactName: string
-    contactEmail?: string | null
-    contactPhone?: string | null
-    requestedDate?: string | null
+    contactEmail: string | null
+    contactPhone: string | null
+    requestedDate: string | null
     location: string
-    serviceType?: string | null
-    equipmentType?: string | null
-    notes?: string | null
+    serviceType: ServiceType
+    equipmentType: EquipmentType
+    notes: string | null
     status?: InspectionRequestStatus
+    consent_accepted: boolean
+    consent_third_party: boolean
 }
 
-export interface InspectionRequestFormValues {
+export type InspectionRequestFormValues = {
     companyName: string
     contactName: string
     contactEmail: string
@@ -40,6 +55,8 @@ export interface InspectionRequestFormValues {
     serviceType: string
     equipmentType: string
     notes: string
+    consent_accepted: boolean
+    consent_third_party: boolean
 }
 
 export type InspectionRequestFormErrors = Partial<
@@ -56,31 +73,179 @@ export const inspectionRequestInitialValues: InspectionRequestFormValues = {
     serviceType: "",
     equipmentType: "",
     notes: "",
+    consent_accepted: false,
+    consent_third_party: false,
+}
+
+const email_pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const phone_pattern = /^\d{7,15}$/
+const letters_pattern = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/
+const malicious_pattern =
+    /<\s*\/?\s*(script|iframe|object|embed|svg|img|style|link|meta)|javascript\s*:|on\w+\s*=|data\s*:\s*text\/html|eval\s*\(|document\.|window\./i
+
+function has_valid_length(value: string, max_length: number): boolean {
+    return value.trim().length <= max_length
+}
+
+function contains_malicious_content(value: string): boolean {
+    return malicious_pattern.test(value)
+}
+
+function has_only_letters(value: string): boolean {
+    return letters_pattern.test(value.trim())
 }
 
 export function validateInspectionRequestForm(
     values: InspectionRequestFormValues,
 ): InspectionRequestFormErrors {
     const errors: InspectionRequestFormErrors = {}
+    const today = new Date().toISOString().slice(0, 10)
 
     if (!values.companyName.trim()) {
         errors.companyName = "La empresa es obligatoria."
+    } else if (!has_only_letters(values.companyName)) {
+        errors.companyName = "La empresa solo puede contener letras y espacios."
+    } else if (contains_malicious_content(values.companyName)) {
+        errors.companyName = "La empresa contiene caracteres no permitidos."
+    } else if (!has_valid_length(values.companyName, 150)) {
+        errors.companyName = "La empresa no puede superar los 150 caracteres."
     }
 
     if (!values.contactName.trim()) {
         errors.contactName = "El contacto es obligatorio."
+    } else if (!has_only_letters(values.contactName)) {
+        errors.contactName = "El contacto solo puede contener letras y espacios."
+    } else if (contains_malicious_content(values.contactName)) {
+        errors.contactName = "El contacto contiene caracteres no permitidos."
+    } else if (!has_valid_length(values.contactName, 150)) {
+        errors.contactName = "El contacto no puede superar los 150 caracteres."
     }
 
-    if (values.contactEmail.trim()) {
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailPattern.test(values.contactEmail.trim())) {
-            errors.contactEmail = "Ingresa un correo válido."
-        }
+    if (values.contactEmail.trim() && !email_pattern.test(values.contactEmail.trim())) {
+        errors.contactEmail = "Ingresa un correo electrónico válido."
+    } else if (contains_malicious_content(values.contactEmail)) {
+        errors.contactEmail = "El correo contiene caracteres no permitidos."
+    } else if (!has_valid_length(values.contactEmail, 150)) {
+        errors.contactEmail = "El correo no puede superar los 150 caracteres."
+    }
+
+    if (values.contactPhone.trim() && !phone_pattern.test(values.contactPhone.trim())) {
+        errors.contactPhone = "El teléfono solo debe contener entre 7 y 15 números."
+    }
+
+    if (values.requestedDate && values.requestedDate < today) {
+        errors.requestedDate = "La fecha solicitada no puede ser anterior a hoy."
     }
 
     if (!values.location.trim()) {
         errors.location = "La ubicación es obligatoria."
+    } else if (contains_malicious_content(values.location)) {
+        errors.location = "La ubicación contiene caracteres no permitidos."
+    } else if (!has_valid_length(values.location, 200)) {
+        errors.location = "La ubicación no puede superar los 200 caracteres."
+    }
+
+    if (!service_type_options.includes(values.serviceType as ServiceType)) {
+        errors.serviceType = "Selecciona un tipo de servicio válido."
+    }
+
+    if (!equipment_type_options.includes(values.equipmentType as EquipmentType)) {
+        errors.equipmentType = "Selecciona un tipo de equipo válido."
+    }
+
+    if (contains_malicious_content(values.notes)) {
+        errors.notes = "Las notas contienen contenido no permitido."
+    } else if (!has_valid_length(values.notes, 5000)) {
+        errors.notes = "Las notas no pueden superar los 5000 caracteres."
+    }
+
+    if (!values.consent_accepted) {
+        errors.consent_accepted =
+            "Debes aceptar la Política de Privacidad conforme a la Ley N° 29733 para enviar la solicitud."
     }
 
     return errors
 }
+
+export type ConversionFormValues = {
+    code: string
+    client_name: string
+    inspection_type: string
+    equipment_type: string
+    inspection_date: string
+    location: string
+    requested_by: string
+    responsible_inspector_id: string
+}
+
+export type ConversionFormErrors = Partial<Record<keyof ConversionFormValues, string>>
+
+export function buildInitialConversionValues(request: InspectionRequest): ConversionFormValues {
+    return {
+        code: "",
+        client_name: request.companyName,
+        inspection_type: request.serviceType ?? "Inspección técnica",
+        equipment_type: request.equipmentType ?? "",
+        inspection_date: request.requestedDate ?? "",
+        location: request.location,
+        requested_by: request.contactName,
+        responsible_inspector_id: "",
+    }
+}
+
+export function validateConversionForm(values: ConversionFormValues): ConversionFormErrors {
+    const errors: ConversionFormErrors = {}
+
+    if (!values.code.trim()) errors.code = "El código es obligatorio."
+    if (!values.client_name.trim()) errors.client_name = "El cliente es obligatorio."
+    if (!values.inspection_type.trim()) {
+        errors.inspection_type = "El tipo de inspección es obligatorio."
+    }
+    if (!values.equipment_type.trim()) {
+        errors.equipment_type = "El tipo de equipo es obligatorio."
+    }
+    if (!values.inspection_date.trim()) {
+        errors.inspection_date = "La fecha programada es obligatoria."
+    }
+    if (!values.responsible_inspector_id.trim()) {
+        errors.responsible_inspector_id = "El inspector responsable es obligatorio."
+    }
+
+    return errors
+}
+
+export function formatRequestDate(value?: string | null): string {
+    if (!value) return "Sin fecha"
+    try {
+        return new Intl.DateTimeFormat("es-PE", {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+        }).format(new Date(value))
+    } catch {
+        return value
+    }
+}
+
+export function getRequestStatusLabel(status: string): string {
+    switch (status) {
+        case "pending":
+            return "Pendiente"
+        case "converted":
+            return "Convertida"
+        default:
+            return status
+    }
+}
+
+export function getRequestStatusVariant(status: string): "outline" | "secondary" | "default" {
+    switch (status) {
+        case "pending":
+            return "outline"
+        case "converted":
+            return "secondary"
+        default:
+            return "outline"
+    }
+}
+

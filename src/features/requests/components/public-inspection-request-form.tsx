@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react"
-import { CheckCircle2, Loader2, Send } from "lucide-react"
+import { CheckCircle2, Info, Loader2, Send } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import {Badge} from "@/components/ui/badge"
+import {Button} from "@/components/ui/button"
 import {
     Card,
     CardContent,
@@ -10,21 +10,25 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import {Checkbox} from "@/components/ui/checkbox"
+import {Input} from "@/components/ui/input"
+import {Label} from "@/components/ui/label"
+import {Textarea} from "@/components/ui/textarea"
+
 import { useCreateInspectionRequestMutation } from "../api/inspection-requests.queries"
-import type {
-    InspectionRequest,
-    InspectionRequestFormErrors,
-    InspectionRequestFormValues,
-} from "../types/inspection-request.types"
 import {
+    equipment_type_options,
     inspectionRequestInitialValues,
+    service_type_options,
     validateInspectionRequestForm,
+    type EquipmentType,
+    type InspectionRequest,
+    type InspectionRequestFormErrors,
+    type InspectionRequestFormValues,
+    type ServiceType,
 } from "../types/inspection-request.types"
 
-function emptyToNull(value?: string): string | null {
+function empty_to_null(value?: string): string | null {
     const normalized = value?.trim() ?? ""
     return normalized ? normalized : null
 }
@@ -39,57 +43,100 @@ export function PublicInspectionRequestForm() {
 
     const createMutation = useCreateInspectionRequestMutation()
 
-    const completedRequired = useMemo(() => {
-        return ["companyName", "contactName", "location"].filter((field) => {
-            const value = values[field as keyof InspectionRequestFormValues]
-            return typeof value === "string" && value.trim().length > 0
-        }).length
+    const completed_required = useMemo(() => {
+        return [
+            values.companyName,
+            values.contactName,
+            values.location,
+            values.serviceType,
+            values.equipmentType,
+            values.consent_accepted ? "accepted" : "",
+        ].filter((value) => value.trim().length > 0).length
     }, [values])
 
-    const serverError =
+    const server_error =
         createMutation.error instanceof Error ? createMutation.error.message : null
 
-    function updateField<K extends keyof InspectionRequestFormValues>(
+    function sanitize_letters(value: string): string {
+        return value.replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "")
+    }
+
+    function sanitize_numbers(value: string): string {
+        return value.replace(/\D/g, "")
+    }
+
+    function sanitize_text(value: string): string {
+        return value
+            .replace(/<[^>]*>/g, "")
+            .replace(/javascript\s*:/gi, "")
+            .replace(/on\w+\s*=/gi, "")
+    }
+
+    function update_field<K extends keyof InspectionRequestFormValues>(
         field: K,
         value: InspectionRequestFormValues[K],
     ) {
-        setValues((prev) => ({
-            ...prev,
-            [field]: value,
+        let sanitized_value = value
+
+        if (typeof value === "string") {
+            if (field === "companyName" || field === "contactName") {
+                sanitized_value = sanitize_letters(value) as InspectionRequestFormValues[K]
+            } else if (field === "contactPhone") {
+                sanitized_value = sanitize_numbers(value) as InspectionRequestFormValues[K]
+            } else if (
+                field === "contactEmail" ||
+                field === "location" ||
+                field === "notes"
+            ) {
+                sanitized_value = sanitize_text(value) as InspectionRequestFormValues[K]
+            }
+        }
+
+        setValues((previous) => ({
+            ...previous,
+            [field]: sanitized_value,
         }))
 
-        setErrors((prev) => ({
-            ...prev,
+        setErrors((previous) => ({
+            ...previous,
             [field]: undefined,
         }))
+
+        setSubmittedRequest(null)
     }
 
-    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    async function handle_submit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
 
-        const nextErrors = validateInspectionRequestForm(values)
-        setErrors(nextErrors)
+        const next_errors = validateInspectionRequestForm(values)
+        setErrors(next_errors)
 
-        if (Object.keys(nextErrors).length > 0) {
+        if (Object.keys(next_errors).length > 0) {
             return
         }
 
-        const result = await createMutation.mutateAsync({
-            companyName: values.companyName.trim(),
-            contactName: values.contactName.trim(),
-            contactEmail: emptyToNull(values.contactEmail),
-            contactPhone: emptyToNull(values.contactPhone),
-            requestedDate: values.requestedDate || null,
-            location: values.location.trim(),
-            serviceType: emptyToNull(values.serviceType),
-            equipmentType: emptyToNull(values.equipmentType),
-            notes: emptyToNull(values.notes),
-            status: "pending",
-        })
+        try {
+            const result = await createMutation.mutateAsync({
+                companyName: values.companyName.trim(),
+                contactName: values.contactName.trim(),
+                contactEmail: empty_to_null(values.contactEmail),
+                contactPhone: empty_to_null(values.contactPhone),
+                requestedDate: values.requestedDate || null,
+                location: values.location.trim(),
+                serviceType: values.serviceType as ServiceType,
+                equipmentType: values.equipmentType as EquipmentType,
+                notes: empty_to_null(values.notes),
+                status: "pending",
+                consent_accepted: values.consent_accepted,
+                consent_third_party: values.consent_third_party,
+            })
 
-        setSubmittedRequest(result)
-        setValues(inspectionRequestInitialValues)
-        setErrors({})
+            setSubmittedRequest(result)
+            setValues(inspectionRequestInitialValues)
+            setErrors({})
+        } catch {
+            return
+        }
     }
 
     return (
@@ -109,13 +156,13 @@ export function PublicInspectionRequestForm() {
                 </Card>
             ) : null}
 
-            {serverError ? (
+            {server_error ? (
                 <Card className="border-destructive/30 shadow-sm">
                     <CardHeader>
                         <CardTitle className="text-base text-destructive">
                             No se pudo registrar la solicitud
                         </CardTitle>
-                        <CardDescription>{serverError}</CardDescription>
+                        <CardDescription>{server_error}</CardDescription>
                     </CardHeader>
                 </Card>
             ) : null}
@@ -124,8 +171,11 @@ export function PublicInspectionRequestForm() {
                 <CardHeader className="space-y-3">
                     <div className="flex items-center justify-between gap-3">
                         <CardTitle className="text-base">Solicitar inspección</CardTitle>
-                        <Badge variant="outline">{completedRequired}/3 obligatorios</Badge>
+                        <Badge variant="outline">
+                            {completed_required}/6 obligatorios
+                        </Badge>
                     </div>
+
                     <CardDescription>
                         Completa los datos base para registrar la solicitud y dejarla lista
                         para programación operativa.
@@ -133,36 +183,52 @@ export function PublicInspectionRequestForm() {
                 </CardHeader>
 
                 <CardContent>
-                    <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+                    <form
+                        noValidate
+                        onSubmit={handle_submit}
+                        className="grid gap-4 md:grid-cols-2"
+                    >
                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="companyName">Empresa</Label>
+                            <Label htmlFor="companyName">Empresa *</Label>
                             <Input
                                 id="companyName"
                                 value={values.companyName}
+                                maxLength={150}
                                 onChange={(event) =>
-                                    updateField("companyName", event.target.value)
+                                    update_field("companyName", event.target.value)
                                 }
                                 placeholder="Transportes del Norte S.A.C."
                                 aria-invalid={Boolean(errors.companyName)}
+                                aria-describedby={
+                                    errors.companyName ? "companyName-error" : undefined
+                                }
                             />
                             {errors.companyName ? (
-                                <p className="text-xs text-destructive">{errors.companyName}</p>
+                                <p id="companyName-error" className="text-xs text-destructive">
+                                    {errors.companyName}
+                                </p>
                             ) : null}
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="contactName">Contacto</Label>
+                            <Label htmlFor="contactName">Contacto *</Label>
                             <Input
                                 id="contactName"
                                 value={values.contactName}
+                                maxLength={150}
                                 onChange={(event) =>
-                                    updateField("contactName", event.target.value)
+                                    update_field("contactName", event.target.value)
                                 }
                                 placeholder="Carlos Ruiz"
                                 aria-invalid={Boolean(errors.contactName)}
+                                aria-describedby={
+                                    errors.contactName ? "contactName-error" : undefined
+                                }
                             />
                             {errors.contactName ? (
-                                <p className="text-xs text-destructive">{errors.contactName}</p>
+                                <p id="contactName-error" className="text-xs text-destructive">
+                                    {errors.contactName}
+                                </p>
                             ) : null}
                         </div>
 
@@ -170,12 +236,24 @@ export function PublicInspectionRequestForm() {
                             <Label htmlFor="contactPhone">Teléfono</Label>
                             <Input
                                 id="contactPhone"
+                                type="tel"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 value={values.contactPhone}
-                                onChange={(event) =>
-                                    updateField("contactPhone", event.target.value)
-                                }
+                                maxLength={15}
+                                onChange={(event) => update_field("contactPhone", event.target.value)}
                                 placeholder="999888777"
+                                aria-invalid={Boolean(errors.contactPhone)}
+                                aria-describedby={errors.contactPhone ? "contactPhone-error" : undefined}
                             />
+                            {errors.contactPhone ? (
+                                <p
+                                    id="contactPhone-error"
+                                    className="text-xs text-destructive"
+                                >
+                                    {errors.contactPhone}
+                                </p>
+                            ) : null}
                         </div>
 
                         <div className="space-y-2">
@@ -184,14 +262,23 @@ export function PublicInspectionRequestForm() {
                                 id="contactEmail"
                                 type="email"
                                 value={values.contactEmail}
+                                maxLength={150}
                                 onChange={(event) =>
-                                    updateField("contactEmail", event.target.value)
+                                    update_field("contactEmail", event.target.value)
                                 }
                                 placeholder="contacto@empresa.com"
                                 aria-invalid={Boolean(errors.contactEmail)}
+                                aria-describedby={
+                                    errors.contactEmail ? "contactEmail-error" : undefined
+                                }
                             />
                             {errors.contactEmail ? (
-                                <p className="text-xs text-destructive">{errors.contactEmail}</p>
+                                <p
+                                    id="contactEmail-error"
+                                    className="text-xs text-destructive"
+                                >
+                                    {errors.contactEmail}
+                                </p>
                             ) : null}
                         </div>
 
@@ -200,49 +287,103 @@ export function PublicInspectionRequestForm() {
                             <Input
                                 id="requestedDate"
                                 type="date"
+                                min={new Date().toISOString().slice(0, 10)}
                                 value={values.requestedDate}
                                 onChange={(event) =>
-                                    updateField("requestedDate", event.target.value)
+                                    update_field("requestedDate", event.target.value)
+                                }
+                                aria-invalid={Boolean(errors.requestedDate)}
+                                aria-describedby={
+                                    errors.requestedDate ? "requestedDate-error" : undefined
                                 }
                             />
+                            {errors.requestedDate ? (
+                                <p
+                                    id="requestedDate-error"
+                                    className="text-xs text-destructive"
+                                >
+                                    {errors.requestedDate}
+                                </p>
+                            ) : null}
                         </div>
 
                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="location">Ubicación</Label>
+                            <Label htmlFor="location">Ubicación *</Label>
                             <Input
                                 id="location"
                                 value={values.location}
-                                onChange={(event) => updateField("location", event.target.value)}
+                                maxLength={200}
+                                onChange={(event) =>
+                                    update_field("location", event.target.value)
+                                }
                                 placeholder="Trujillo, patio principal"
                                 aria-invalid={Boolean(errors.location)}
+                                aria-describedby={errors.location ? "location-error" : undefined}
                             />
                             {errors.location ? (
-                                <p className="text-xs text-destructive">{errors.location}</p>
+                                <p id="location-error" className="text-xs text-destructive">
+                                    {errors.location}
+                                </p>
                             ) : null}
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="serviceType">Tipo de servicio</Label>
-                            <Input
+                            <Label htmlFor="serviceType">Tipo de servicio *</Label>
+                            <select
                                 id="serviceType"
                                 value={values.serviceType}
                                 onChange={(event) =>
-                                    updateField("serviceType", event.target.value)
+                                    update_field("serviceType", event.target.value)
                                 }
-                                placeholder="Inspección técnica"
-                            />
+                                aria-invalid={Boolean(errors.serviceType)}
+                                aria-describedby={
+                                    errors.serviceType ? "serviceType-error" : undefined
+                                }
+                                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20"
+                            >
+                                <option value="">Selecciona un servicio</option>
+                                {service_type_options.map((service_type) => (
+                                    <option key={service_type} value={service_type}>
+                                        {service_type}
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.serviceType ? (
+                                <p id="serviceType-error" className="text-xs text-destructive">
+                                    {errors.serviceType}
+                                </p>
+                            ) : null}
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="equipmentType">Tipo de equipo</Label>
-                            <Input
+                            <Label htmlFor="equipmentType">Tipo de equipo *</Label>
+                            <select
                                 id="equipmentType"
                                 value={values.equipmentType}
                                 onChange={(event) =>
-                                    updateField("equipmentType", event.target.value)
+                                    update_field("equipmentType", event.target.value)
                                 }
-                                placeholder="Semirremolque"
-                            />
+                                aria-invalid={Boolean(errors.equipmentType)}
+                                aria-describedby={
+                                    errors.equipmentType ? "equipmentType-error" : undefined
+                                }
+                                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20"
+                            >
+                                <option value="">Selecciona un equipo</option>
+                                {equipment_type_options.map((equipment_type) => (
+                                    <option key={equipment_type} value={equipment_type}>
+                                        {equipment_type}
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.equipmentType ? (
+                                <p
+                                    id="equipmentType-error"
+                                    className="text-xs text-destructive"
+                                >
+                                    {errors.equipmentType}
+                                </p>
+                            ) : null}
                         </div>
 
                         <div className="space-y-2 md:col-span-2">
@@ -250,17 +391,100 @@ export function PublicInspectionRequestForm() {
                             <Textarea
                                 id="notes"
                                 value={values.notes}
-                                onChange={(event) => updateField("notes", event.target.value)}
+                                maxLength={5000}
+                                onChange={(event) => update_field("notes", event.target.value)}
                                 placeholder="Detalle breve de la necesidad o condiciones de atención."
+                                aria-invalid={Boolean(errors.notes)}
+                                aria-describedby={errors.notes ? "notes-error" : undefined}
                             />
+                            {errors.notes ? (
+                                <p id="notes-error" className="text-xs text-destructive">
+                                    {errors.notes}
+                                </p>
+                            ) : null}
                         </div>
 
-                        <div className="md:col-span-2 flex items-center justify-between gap-3 border-t pt-4">
+                        <div className="space-y-3 rounded-lg border border-border/80 bg-muted/20 p-4 md:col-span-2">
+                            <div className="flex items-start gap-3">
+                                <Checkbox
+                                    id="consent_accepted"
+                                    checked={values.consent_accepted}
+                                    onCheckedChange={(checked) =>
+                                        update_field("consent_accepted", checked === true)
+                                    }
+                                    aria-invalid={Boolean(errors.consent_accepted)}
+                                    aria-describedby={
+                                        errors.consent_accepted ? "consent_accepted-error" : "consent-desc"
+                                    }
+                                    className="mt-0.5"
+                                />
+                                <div className="space-y-1 text-sm leading-snug">
+                                    <Label
+                                        htmlFor="consent_accepted"
+                                        className="font-medium text-foreground cursor-pointer"
+                                    >
+                                        Consentimiento informado de datos personales (Ley N° 29733) *
+                                    </Label>
+                                    <p id="consent-desc" className="text-xs text-muted-foreground">
+                                        Autorizo el tratamiento de mis datos personales para la atención y programación de esta inspección. Declaro conocer que puedo ejercer mis derechos ARCO (Acceso, Rectificación, Cancelación y Oposición).
+                                    </p>
+                                </div>
+                            </div>
+                            {errors.consent_accepted ? (
+                                <p id="consent_accepted-error" className="text-xs text-destructive pl-7">
+                                    {errors.consent_accepted}
+                                </p>
+                            ) : null}
+
+                            <div className="flex items-start gap-3 border-t border-border/60 pt-3">
+                                <Checkbox
+                                    id="consent_third_party"
+                                    checked={values.consent_third_party}
+                                    onCheckedChange={(checked) =>
+                                        update_field("consent_third_party", checked === true)
+                                    }
+                                    className="mt-0.5"
+                                />
+                                <div className="space-y-1 text-sm leading-snug">
+                                    <Label
+                                        htmlFor="consent_third_party"
+                                        className="font-normal text-muted-foreground cursor-pointer"
+                                    >
+                                        Declaración de representación: Cuento con la debida autorización y facultades para registrar datos en nombre del titular o empresa indicada. (Opcional)
+                                    </Label>
+                                </div>
+                            </div>
+
+                            <details className="mt-1 text-xs text-muted-foreground group">
+                                <summary className="cursor-pointer font-medium text-primary hover:underline inline-flex items-center gap-1.5 py-1">
+                                    <Info className="h-3.5 w-3.5" />
+                                    <span>Información legal sobre protección de datos y derechos ARCO</span>
+                                </summary>
+                                <div className="mt-2 space-y-2 rounded-md border border-border/60 bg-background p-3 text-xs leading-relaxed text-muted-foreground">
+                                    <p className="font-semibold text-foreground">
+                                        Marco Normativo - Ley N° 29733 (Perú):
+                                    </p>
+                                    <p>
+                                        Los datos personales recopilados mediante este formulario son incorporados en bancos de datos automatizados exclusivamente para fines de coordinación operativa, técnica y administrativa vinculados a las solicitudes de inspección.
+                                    </p>
+                                    <p>
+                                        <strong>Derechos ARCO:</strong> Como titular de los datos personales o representante autorizado, tienes derecho a solicitar el Acceso, Rectificación, Cancelación y Oposición del tratamiento de tu información mediante solicitud formal a los canales de contacto de nuestra entidad.
+                                    </p>
+                                </div>
+                            </details>
+                        </div>
+
+                        <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between md:col-span-2">
                             <p className="text-xs text-muted-foreground">
-                                La solicitud se registrará en estado pendiente.
+                                Los campos marcados con * son obligatorios. La solicitud se
+                                registrará en estado pendiente.
                             </p>
 
-                            <Button type="submit" disabled={createMutation.isPending}>
+                            <Button
+                                type="submit"
+                                disabled={createMutation.isPending || !values.consent_accepted}
+                                className="min-h-[44px] w-full sm:w-auto"
+                            >
                                 {createMutation.isPending ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (

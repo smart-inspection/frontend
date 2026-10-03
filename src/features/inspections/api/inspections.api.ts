@@ -8,13 +8,15 @@ import {
 } from "@/lib/api"
 
 import type {
+    ConfidenceLevel,
     Evidence,
     EvidenceCreateInput,
     EvidenceOcrResponse,
     Inspection,
     InspectionCreateInput,
     InspectionField,
-    InspectionFieldCreateInput, InspectionRequestConvertInput,
+    InspectionFieldCreateInput,
+    InspectionRequestConvertInput,
     LlmReportGenerateInput,
     OcrExtractResponse,
     OcrValidationItem,
@@ -30,6 +32,9 @@ import type {
     TranscriptionCreateInput,
     TranscriptionUpdateInput,
 } from "../types/inspections.types"
+
+/** Tipo de entrada para todos los mappers: objeto plano proveniente del backend. */
+type RawRecord = Record<string, unknown>
 
 function asString(value: unknown, fallback = ""): string {
     return typeof value === "string" ? value : fallback
@@ -61,7 +66,7 @@ function pickFirst<T>(...values: T[]): T | undefined {
     return values.find((value) => value !== undefined && value !== null)
 }
 
-function mapInspection(raw: any): Inspection {
+function mapInspection(raw: RawRecord): Inspection {
     return {
         id: asNumber(raw?.id),
         code: asString(raw?.code),
@@ -71,8 +76,8 @@ function mapInspection(raw: any): Inspection {
         inspection_date: asString(pickFirst(raw?.inspection_date, raw?.inspectiondate)),
         location: asNullableString(raw?.location),
         requested_by: asNullableString(pickFirst(raw?.requested_by, raw?.requestedby)),
-        responsible_inspector: asNullableString(
-            pickFirst(raw?.responsible_inspector, raw?.responsibleinspector),
+        responsible_inspector_id: asNullableNumber(
+            pickFirst(raw?.responsible_inspector_id, raw?.responsibleinspectorid),
         ),
         status: asString(raw?.status, "draft"),
         created_at: asString(pickFirst(raw?.created_at, raw?.createdat)),
@@ -80,7 +85,7 @@ function mapInspection(raw: any): Inspection {
     }
 }
 
-function mapInspectionField(raw: any): InspectionField {
+function mapInspectionField(raw: RawRecord): InspectionField {
     return {
         id: asNumber(raw?.id),
         inspection_id: asNumber(pickFirst(raw?.inspection_id, raw?.inspectionid)),
@@ -103,7 +108,7 @@ function mapInspectionField(raw: any): InspectionField {
     }
 }
 
-function mapEvidence(raw: any): Evidence {
+function mapEvidence(raw: RawRecord): Evidence {
     return {
         id: asNumber(raw?.id),
         inspection_id: asNumber(pickFirst(raw?.inspection_id, raw?.inspectionid)),
@@ -128,10 +133,13 @@ function mapEvidence(raw: any): Evidence {
             pickFirst(raw?.ocr_last_processed_at, raw?.ocrlastprocessedat),
         ),
         uploaded_at: asString(pickFirst(raw?.uploaded_at, raw?.uploadedat)),
+        accessible_alt_text: asNullableString(
+            pickFirst(raw?.accessible_alt_text, raw?.accessiblealttext),
+        ),
     }
 }
 
-function mapEvidenceOcrResponse(raw: any): EvidenceOcrResponse {
+function mapEvidenceOcrResponse(raw: RawRecord): EvidenceOcrResponse {
     return {
         evidence_id: asNumber(pickFirst(raw?.evidence_id, raw?.evidenceid)),
         ocr_extracted_text: asNullableString(
@@ -147,7 +155,7 @@ function mapEvidenceOcrResponse(raw: any): EvidenceOcrResponse {
     }
 }
 
-function mapOcrExtractResponse(raw: any): OcrExtractResponse {
+function mapOcrExtractResponse(raw: RawRecord): OcrExtractResponse {
     return {
         evidence_id: asNumber(pickFirst(raw?.evidence_id, raw?.evidenceid)),
         evidence_category: asString(
@@ -159,7 +167,7 @@ function mapOcrExtractResponse(raw: any): OcrExtractResponse {
     }
 }
 
-function mapOcrValidationItem(raw: any): OcrValidationItem {
+function mapOcrValidationItem(raw: RawRecord): OcrValidationItem {
     return {
         field_id: asNumber(pickFirst(raw?.field_id, raw?.fieldid)),
         field_key: asString(pickFirst(raw?.field_key, raw?.fieldkey)),
@@ -175,10 +183,13 @@ function mapOcrValidationItem(raw: any): OcrValidationItem {
             pickFirst(raw?.validation_message, raw?.validationmessage),
         ),
         confidence: asNullableNumber(raw?.confidence),
+        confidence_level: asNullableString(
+            pickFirst(raw?.confidence_level, raw?.confidencelevel),
+        ) as ConfidenceLevel | null,
     }
 }
 
-function mapOcrValidationSummary(raw: any): OcrValidationSummary {
+function mapOcrValidationSummary(raw: RawRecord): OcrValidationSummary {
     return {
         matched: asNumber(raw?.matched),
         mismatched: asNumber(raw?.mismatched),
@@ -189,19 +200,23 @@ function mapOcrValidationSummary(raw: any): OcrValidationSummary {
     }
 }
 
-function mapOcrValidationResponse(raw: any): OcrValidationResponse {
+function mapOcrValidationResponse(raw: RawRecord): OcrValidationResponse {
     return {
         inspection_id: asNumber(pickFirst(raw?.inspection_id, raw?.inspectionid)),
         processed_evidences: asNumber(
             pickFirst(raw?.processed_evidences, raw?.processedevidences),
         ),
         aggregated_text: asString(pickFirst(raw?.aggregated_text, raw?.aggregatedtext)),
-        summary: mapOcrValidationSummary(raw?.summary ?? {}),
-        results: Array.isArray(raw?.results) ? raw.results.map(mapOcrValidationItem) : [],
+        summary: mapOcrValidationSummary(
+            asRecord(raw?.summary) ?? {},
+        ),
+        results: Array.isArray(raw?.results)
+            ? (raw.results as RawRecord[]).map(mapOcrValidationItem)
+            : [],
     }
 }
 
-function mapTranscription(raw: any): Transcription {
+function mapTranscription(raw: RawRecord): Transcription {
     return {
         id: asNumber(raw?.id),
         inspection_id: asNumber(pickFirst(raw?.inspection_id, raw?.inspectionid)),
@@ -214,6 +229,9 @@ function mapTranscription(raw: any): Transcription {
         raw_text: asNullableString(pickFirst(raw?.raw_text, raw?.rawtext)),
         final_text: asNullableString(pickFirst(raw?.final_text, raw?.finaltext)),
         confidence: asNullableNumber(raw?.confidence),
+        confidence_level: asNullableString(
+            pickFirst(raw?.confidence_level, raw?.confidencelevel),
+        ) as ConfidenceLevel | null,
         processed: asBoolean(raw?.processed),
         edited_manually: asBoolean(
             pickFirst(raw?.edited_manually, raw?.editedmanually),
@@ -223,7 +241,7 @@ function mapTranscription(raw: any): Transcription {
     }
 }
 
-function mapReportDraft(raw: any): ReportDraft {
+function mapReportDraft(raw: RawRecord): ReportDraft {
     return {
         id: asNumber(raw?.id),
         inspection_id: asNumber(pickFirst(raw?.inspection_id, raw?.inspectionid)),
@@ -242,10 +260,14 @@ function mapReportDraft(raw: any): ReportDraft {
         ),
         created_at: asString(pickFirst(raw?.created_at, raw?.createdat)),
         updated_at: asString(pickFirst(raw?.updated_at, raw?.updatedat)),
+        is_ai_generated: asBoolean(
+            pickFirst(raw?.is_ai_generated, raw?.isaigenerated),
+        ),
+        disclaimer: asNullableString(raw?.disclaimer),
     }
 }
 
-function mapReportStatus(raw: any): ReportStatus {
+function mapReportStatus(raw: RawRecord): ReportStatus {
     return {
         report_draft_id: asNumber(
             pickFirst(raw?.report_draft_id, raw?.reportdraftid),
@@ -261,7 +283,7 @@ function mapReportStatus(raw: any): ReportStatus {
     }
 }
 
-function mapReportStatusLog(raw: any): ReportStatusLog {
+function mapReportStatusLog(raw: RawRecord): ReportStatusLog {
     return {
         id: asNumber(raw?.id),
         report_draft_id: asNumber(
@@ -299,7 +321,7 @@ export type ProductivityRecord = {
     met_goal: boolean | null
 }
 
-function map_productivity_record(raw: any): ProductivityRecord {
+function map_productivity_record(raw: RawRecord): ProductivityRecord {
     return {
         id: asNumber(raw?.id),
         inspection_id: asNumber(pickFirst(raw?.inspection_id, raw?.inspectionid)),
@@ -326,7 +348,7 @@ export async function get_productivity_by_inspection(
     inspection_id: number,
 ): Promise<ProductivityRecord | null> {
     try {
-        const response = await apiGet<any>(
+        const response = await apiGet<RawRecord>(
             `/productivity/inspection/${inspection_id}`,
         )
         return response ? map_productivity_record(response) : null
@@ -336,23 +358,20 @@ export async function get_productivity_by_inspection(
 }
 
 export async function getInspections(): Promise<Inspection[]> {
-    const response = await apiGet<any[]>("/inspections")
+    const response = await apiGet<RawRecord[]>("/inspections")
     return Array.isArray(response) ? response.map(mapInspection) : []
 }
 
 export async function getInspectionById(inspectionId: number): Promise<Inspection> {
-    const response = await apiGet<any>(`/inspections/${inspectionId}`)
+    const response = await apiGet<RawRecord>(`/inspections/${inspectionId}`)
     return mapInspection(response)
 }
 
-export async function createInspection(
-    payload: InspectionCreateInput,
-): Promise<Inspection> {
-    const response = await apiPost<any>("/inspections", {
+export async function createInspection(payload: InspectionCreateInput): Promise<Inspection> {
+    const response = await apiPost<RawRecord>("inspections", {
         status: "draft",
         ...payload,
     })
-
     return mapInspection(response)
 }
 
@@ -371,14 +390,23 @@ export async function convertInspectionRequest(
 
 export async function startProductivity(inspectionId: number): Promise<void> {
     await apiPatch(`/productivity/inspection/${inspectionId}/start`, {
-        reportstartedat: new Date().toISOString(),
+        report_started_at: new Date().toISOString(),
+    })
+}
+
+export async function finishProductivity(
+    inspectionId: number,
+    finishedAt?: string,
+): Promise<void> {
+    await apiPatch(`/productivity/inspection/${inspectionId}/finish`, {
+        report_finished_at: finishedAt ?? new Date().toISOString(),
     })
 }
 
 export async function getInspectionFields(
     inspectionId: number,
 ): Promise<InspectionField[]> {
-    const response = await apiGet<any[]>(`/inspections/${inspectionId}/fields`)
+    const response = await apiGet<RawRecord[]>(`/inspections/${inspectionId}/fields`)
     return Array.isArray(response) ? response.map(mapInspectionField) : []
 }
 
@@ -386,7 +414,7 @@ export async function createInspectionField(
     inspectionId: number,
     payload: InspectionFieldCreateInput,
 ): Promise<InspectionField> {
-    const response = await apiPost<any>(`/inspections/${inspectionId}/fields`, {
+    const response = await apiPost<RawRecord>(`/inspections/${inspectionId}/fields`, {
         validation_status: "pending",
         ...payload,
     })
@@ -397,7 +425,7 @@ export async function createInspectionField(
 export async function getInspectionEvidences(
     inspectionId: number,
 ): Promise<Evidence[]> {
-    const response = await apiGet<any[]>(`/inspections/${inspectionId}/evidences`)
+    const response = await apiGet<RawRecord[]>(`/inspections/${inspectionId}/evidences`)
     return Array.isArray(response) ? response.map(mapEvidence) : []
 }
 
@@ -437,49 +465,49 @@ export async function createInspectionEvidence(
 
     formData.append("is_reference", String(Boolean(payload.is_reference)))
 
-    const response = await apiPostForm<any>(`/inspections/${inspectionId}/evidences`, formData)
+    const response = await apiPostForm<RawRecord>(`/inspections/${inspectionId}/evidences`, formData)
     return mapEvidence(response)
 }
 
 export async function runEvidenceOcr(
     evidenceId: number,
 ): Promise<EvidenceOcrResponse> {
-    const response = await apiPost<any>(`/evidences/${evidenceId}/ocr`)
+    const response = await apiPost<RawRecord>(`/evidences/${evidenceId}/ocr`)
     return mapEvidenceOcrResponse(response)
 }
 
 export async function extractEvidenceOcr(
     evidenceId: number,
 ): Promise<OcrExtractResponse> {
-    const response = await apiPost<any>(`/ocr/evidences/${evidenceId}/extract`)
+    const response = await apiPost<RawRecord>(`/ocr/evidences/${evidenceId}/extract`)
     return mapOcrExtractResponse(response)
 }
 
 export async function validateInspectionOcr(
     inspectionId: number,
 ): Promise<OcrValidationResponse> {
-    const response = await apiPost<any>(`/ocr/inspections/${inspectionId}/validate`)
+    const response = await apiPost<RawRecord>(`/ocr/inspections/${inspectionId}/validate`)
     return mapOcrValidationResponse(response)
 }
 
 export async function getInspectionTranscriptions(
     inspectionId: number,
 ): Promise<Transcription[]> {
-    const response = await apiGet<any[]>(`/transcription/inspection/${inspectionId}`)
+    const response = await apiGet<RawRecord[]>(`/transcription/inspection/${inspectionId}`)
     return Array.isArray(response) ? response.map(mapTranscription) : []
 }
 
 export async function getTranscriptionById(
     transcriptionId: number,
 ): Promise<Transcription> {
-    const response = await apiGet<any>(`/transcription/${transcriptionId}`)
+    const response = await apiGet<RawRecord>(`/transcription/${transcriptionId}`)
     return mapTranscription(response)
 }
 
 export async function createTranscription(
     payload: TranscriptionCreateInput,
 ): Promise<Transcription> {
-    const response = await apiPost<any>("/transcription", {
+    const response = await apiPost<RawRecord>("/transcription", {
         language: "es",
         model_name: "base",
         ...payload,
@@ -492,19 +520,19 @@ export async function updateTranscription(
     transcriptionId: number,
     payload: TranscriptionUpdateInput,
 ): Promise<Transcription> {
-    const response = await apiPut<any>(`/transcription/${transcriptionId}`, payload)
+    const response = await apiPut<RawRecord>(`/transcription/${transcriptionId}`, payload)
     return mapTranscription(response)
 }
 
 export async function getInspectionDrafts(
     inspectionId: number,
 ): Promise<ReportDraft[]> {
-    const response = await apiGet<any[]>(`/report-drafts/inspection/${inspectionId}`)
+    const response = await apiGet<RawRecord[]>(`/report-drafts/inspection/${inspectionId}`)
     return Array.isArray(response) ? response.map(mapReportDraft) : []
 }
 
 export async function getDraftById(draftId: number): Promise<ReportDraft> {
-    const response = await apiGet<any>(`/report-drafts/${draftId}`)
+    const response = await apiGet<RawRecord>(`/report-drafts/${draftId}`)
     return mapReportDraft(response)
 }
 
@@ -512,7 +540,7 @@ export async function generateReportDraft(
     inspectionId: number,
     payload?: ReportDraftGenerateInput,
 ): Promise<ReportDraft> {
-    const response = await apiPost<any>(`/report-drafts/generate/${inspectionId}`, {
+    const response = await apiPost<RawRecord>(`/report-drafts/generate/${inspectionId}`, {
         template_version: payload?.template_version ?? "v1",
     })
 
@@ -523,7 +551,7 @@ export async function generateLlmReportDraft(
     inspectionId: number,
     payload?: LlmReportGenerateInput,
 ): Promise<ReportDraft> {
-    const response = await apiPost<any>(`/llm-report/generate/${inspectionId}`, {
+    const response = await apiPost<RawRecord>(`/llm-report/generate/${inspectionId}`, {
         template_version: payload?.template_version ?? "llama3-v1",
     })
 
@@ -534,7 +562,7 @@ export async function updateReportDraft(
     draftId: number,
     payload: ReportDraftUpdateInput,
 ): Promise<ReportDraft> {
-    const response = await apiPut<any>(`/report-drafts/${draftId}`, {
+    const response = await apiPut<RawRecord>(`/report-drafts/${draftId}`, {
         status: "edited",
         ...payload,
     })
@@ -543,7 +571,7 @@ export async function updateReportDraft(
 }
 
 export async function getReportStatus(draftId: number): Promise<ReportStatus> {
-    const response = await apiGet<any>(`/reports/${draftId}/status`)
+    const response = await apiGet<RawRecord>(`/reports/${draftId}/status`)
     return mapReportStatus(response)
 }
 
@@ -551,7 +579,7 @@ export async function updateReportStatus(
     draftId: number,
     payload: ReportStatusUpdateInput,
 ): Promise<ReportStatus> {
-    const response = await apiPatch<any>(`/reports/${draftId}/status`, payload)
+    const response = await apiPatch<RawRecord>(`/reports/${draftId}/status`, payload)
     return mapReportStatus(response)
 }
 
@@ -559,7 +587,7 @@ export async function getReportHistory(
     draftId: number,
     limit = 50,
 ): Promise<ReportStatusLog[]> {
-    const response = await apiGet<any[]>(`/reports/${draftId}/history?limit=${limit}`)
+    const response = await apiGet<RawRecord[]>(`/reports/${draftId}/history?limit=${limit}`)
     return Array.isArray(response) ? response.map(mapReportStatusLog) : []
 }
 
@@ -576,7 +604,7 @@ export async function updateInspectionField(
     fieldId: number,
     payload: { final_value: string },
 ): Promise<InspectionField> {
-    const response = await apiPut<any>(
+    const response = await apiPut<RawRecord>(
         `/inspections/${inspectionId}/fields/${fieldId}`,
         payload,
     )

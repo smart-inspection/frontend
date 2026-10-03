@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
 
 import type { Inspection } from "../types/inspections.types"
 import {
@@ -41,6 +42,10 @@ export function InspectionDetailHeader({
                                            draftsCount,
                                            observedFieldsCount,
                                        }: InspectionDetailHeaderProps) {
+    const { data: admin_users } = useAdminUsersQuery()
+    const responsible_inspector_name =
+        admin_users?.find((user) => user.id === inspection.responsible_inspector_id)
+            ?.full_name ?? null
     return (
         <header className="space-y-4">
             <Button
@@ -99,7 +104,7 @@ export function InspectionDetailHeader({
                             <div className="flex items-center gap-2 sm:col-span-2">
                                 <UserRound className="h-4 w-4 shrink-0" />
                                 <span className="truncate">
-                  {inspection.responsible_inspector || "Inspector no asignado"}
+                  {responsible_inspector_name || "Inspector no asignado"}
                 </span>
                             </div>
                         </div>

@@ -67,6 +67,8 @@ function toApiPayload(payload: InspectionRequestCreateInput) {
         equipment_type: payload.equipmentType?.trim() || null,
         notes: payload.notes?.trim() || null,
         status: payload.status ?? "pending",
+        consent_accepted: Boolean(payload.consent_accepted),
+        consent_third_party: Boolean(payload.consent_third_party),
     }
 }
 

@@ -53,6 +53,42 @@ function get_status_variant(status: string) {
     }
 }
 
+const MIN_START_OFFSET_DAYS = 30
+const MAX_END_OFFSET_DAYS = 180
+
+function format_date_input(date: Date) {
+    return date.toISOString().slice(0, 10)
+}
+
+function get_date_bounds() {
+    const today = new Date()
+    const min_date = new Date(today)
+    min_date.setDate(min_date.getDate() - MIN_START_OFFSET_DAYS)
+    const max_date = new Date(today)
+    max_date.setDate(max_date.getDate() + MAX_END_OFFSET_DAYS)
+    return {
+        min: format_date_input(min_date),
+        max: format_date_input(max_date),
+    }
+}
+
+function validate_date_range(
+    start: string,
+    end: string,
+    bounds: { min: string; max: string },
+) {
+    if (start && (start < bounds.min || start > bounds.max)) {
+        return `La fecha de inicio debe estar entre ${bounds.min} y ${bounds.max}.`
+    }
+    if (end && (end < bounds.min || end > bounds.max)) {
+        return `La fecha de fin debe estar entre ${bounds.min} y ${bounds.max}.`
+    }
+    if (start && end && end < start) {
+        return "La fecha de fin no puede ser anterior a la fecha de inicio."
+    }
+    return null
+}
+
 export function DashboardPage() {
     const { data: current_user } = useCurrentUserQuery()
 
@@ -64,6 +100,19 @@ export function DashboardPage() {
     const [draft_end_date, set_draft_end_date] = useState("")
     const [draft_inspector, set_draft_inspector] = useState("")
     const [draft_status, set_draft_status] = useState("")
+    const [date_error, set_date_error] = useState<string | null>(null)
+
+    const date_bounds = useMemo(() => get_date_bounds(), [])
+
+    function handle_start_date_change(value: string) {
+        set_draft_start_date(value)
+        set_date_error(validate_date_range(value, draft_end_date, date_bounds))
+    }
+
+    function handle_end_date_change(value: string) {
+        set_draft_end_date(value)
+        set_date_error(validate_date_range(draft_start_date, value, date_bounds))
+    }
 
     const resolved_inspector = is_inspector
         ? (current_user?.full_name ?? "")
@@ -71,12 +120,12 @@ export function DashboardPage() {
 
     const filters = useMemo(
         () => ({
-            startDate: draft_start_date || undefined,
-            endDate: draft_end_date || undefined,
+            startDate: !date_error && draft_start_date ? draft_start_date : undefined,
+            endDate: !date_error && draft_end_date ? draft_end_date : undefined,
             inspector: resolved_inspector || undefined,
             operationalStatus: draft_status || undefined,
         }),
-        [draft_start_date, draft_end_date, resolved_inspector, draft_status],
+        [draft_start_date, draft_end_date, resolved_inspector, draft_status, date_error],
     )
 
     const { data, isLoading, isError, error } = useProductivityDashboardQuery(filters)
@@ -105,6 +154,7 @@ export function DashboardPage() {
         set_draft_end_date("")
         if (!is_inspector) set_draft_inspector("")
         set_draft_status("")
+        set_date_error(null)
     }
 
     return (
@@ -136,7 +186,10 @@ export function DashboardPage() {
                         <Input
                             type="date"
                             value={draft_start_date}
-                            onChange={(e) => set_draft_start_date(e.target.value)}
+                            min={date_bounds.min}
+                            max={date_bounds.max}
+                            onChange={(e) => handle_start_date_change(e.target.value)}
+                            className="[&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                         />
                     </div>
 
@@ -145,7 +198,10 @@ export function DashboardPage() {
                         <Input
                             type="date"
                             value={draft_end_date}
-                            onChange={(e) => set_draft_end_date(e.target.value)}
+                            min={draft_start_date || date_bounds.min}
+                            max={date_bounds.max}
+                            onChange={(e) => handle_end_date_change(e.target.value)}
+                            className="[&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                         />
                     </div>
 
@@ -188,6 +244,12 @@ export function DashboardPage() {
                             ))}
                         </select>
                     </div>
+
+                    {date_error ? (
+                        <div className="sm:col-span-2 xl:col-span-4">
+                            <p className="text-xs text-destructive">{date_error}</p>
+                        </div>
+                    ) : null}
 
                     <div className="sm:col-span-2 xl:col-span-4 flex justify-end">
                         <button
@@ -298,58 +360,116 @@ export function DashboardPage() {
                         </CardTitle>
                     </CardHeader>
 
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    {!is_inspector && <TableHead>Inspector</TableHead>}
-                                    <TableHead>Asignadas</TableHead>
-                                    <TableHead>Completadas</TableHead>
-                                    <TableHead>Promedio</TableHead>
-                                    <TableHead>Cumplimiento</TableHead>
-                                </TableRow>
-                            </TableHeader>
+                    <CardContent className="space-y-4">
+                        {/* Vista móvil: tarjetas verticales (< md) */}
+                        <div className="flex flex-col gap-3 md:hidden">
+                            {isLoading ? (
+                                <div className="py-6 text-center text-sm text-muted-foreground">
+                                    Cargando productividad...
+                                </div>
+                            ) : by_inspector.length ? (
+                                by_inspector.map((item) => (
+                                    <Card key={item.inspectorName} className="border-border/60 shadow-none bg-muted/20">
+                                        <CardHeader className="space-y-2 pb-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                                {!is_inspector && (
+                                                    <p className="font-semibold text-foreground">
+                                                        {item.inspectorName}
+                                                    </p>
+                                                )}
+                                                <Badge
+                                                    variant={item.onTimePercentage >= 80 ? "default" : "secondary"}
+                                                    className="text-xs"
+                                                >
+                                                    {item.onTimePercentage.toFixed(1)}% en meta
+                                                </Badge>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="space-y-2 pt-0 text-xs">
+                                            <div className="grid grid-cols-2 gap-2 rounded-lg bg-background p-2.5 border">
+                                                <div>
+                                                    <span className="text-muted-foreground">Asignadas:</span>{" "}
+                                                    <span className="font-semibold text-foreground">
+                                                        {item.assignedInspections}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-muted-foreground">Completadas:</span>{" "}
+                                                    <span className="font-semibold text-foreground">
+                                                        {item.completedReports}
+                                                    </span>
+                                                </div>
+                                                <div className="col-span-2 pt-1 border-t flex items-center justify-between">
+                                                    <span className="text-muted-foreground">Tiempo promedio:</span>{" "}
+                                                    <span className="font-medium text-foreground">
+                                                        {format_minutes(item.averageReportMinutes)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            ) : (
+                                <div className="py-6 text-center text-sm text-muted-foreground">
+                                    No hay registros para los filtros seleccionados.
+                                </div>
+                            )}
+                        </div>
 
-                            <TableBody>
-                                {isLoading ? (
+                        {/* Vista escritorio / tablet: tabla tradicional (>= md) */}
+                        <div className="hidden md:block w-full overflow-x-auto rounded-lg border">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell
-                                            colSpan={is_inspector ? 4 : 5}
-                                            className="py-6 text-center text-sm text-muted-foreground"
-                                        >
-                                            Cargando productividad...
-                                        </TableCell>
+                                        {!is_inspector && <TableHead>Inspector</TableHead>}
+                                        <TableHead>Asignadas</TableHead>
+                                        <TableHead>Completadas</TableHead>
+                                        <TableHead>Promedio</TableHead>
+                                        <TableHead>Cumplimiento</TableHead>
                                     </TableRow>
-                                ) : by_inspector.length ? (
-                                    by_inspector.map((item) => (
-                                        <TableRow key={item.inspectorName}>
-                                            {!is_inspector && (
-                                                <TableCell className="font-medium">
-                                                    {item.inspectorName}
-                                                </TableCell>
-                                            )}
-                                            <TableCell>{item.assignedInspections}</TableCell>
-                                            <TableCell>{item.completedReports}</TableCell>
-                                            <TableCell>
-                                                {format_minutes(item.averageReportMinutes)}
-                                            </TableCell>
-                                            <TableCell>
-                                                {item.onTimePercentage.toFixed(1)}%
+                                </TableHeader>
+
+                                <TableBody>
+                                    {isLoading ? (
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={is_inspector ? 4 : 5}
+                                                className="py-6 text-center text-sm text-muted-foreground"
+                                            >
+                                                Cargando productividad...
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell
-                                            colSpan={is_inspector ? 4 : 5}
-                                            className="py-6 text-center text-sm text-muted-foreground"
-                                        >
-                                            No hay registros para los filtros seleccionados.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                    ) : by_inspector.length ? (
+                                        by_inspector.map((item) => (
+                                            <TableRow key={item.inspectorName}>
+                                                {!is_inspector && (
+                                                    <TableCell className="font-medium">
+                                                        {item.inspectorName}
+                                                    </TableCell>
+                                                )}
+                                                <TableCell>{item.assignedInspections}</TableCell>
+                                                <TableCell>{item.completedReports}</TableCell>
+                                                <TableCell>
+                                                    {format_minutes(item.averageReportMinutes)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {item.onTimePercentage.toFixed(1)}%
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell
+                                                colSpan={is_inspector ? 4 : 5}
+                                                className="py-6 text-center text-sm text-muted-foreground"
+                                            >
+                                                No hay registros para los filtros seleccionados.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
 

@@ -71,10 +71,8 @@ export function InspectionEvidencesTab({
                                            evidences,
                                            isUploading,
                                            uploadError,
-                                           runningEvidenceId,
                                            extractingEvidenceId,
                                            onUpload,
-                                           onRunOcr,
                                            onExtract,
                                        }: InspectionEvidencesTabProps) {
     const [file, setFile] = useState<File | null>(null)
@@ -185,7 +183,7 @@ export function InspectionEvidencesTab({
                     <div className="grid gap-3 md:grid-cols-3">
                         <Button
                             type="button"
-                            className="w-full"
+                            className="w-full min-h-[44px] min-w-[44px]"
                             onClick={() => cameraInputRef.current?.click()}
                         >
                             <Camera className="h-4 w-4" />
@@ -195,7 +193,7 @@ export function InspectionEvidencesTab({
                         <Button
                             type="button"
                             variant="outline"
-                            className="w-full"
+                            className="w-full min-h-[44px] min-w-[44px]"
                             onClick={() => imageInputRef.current?.click()}
                         >
                             <ImagePlus className="h-4 w-4" />
@@ -205,7 +203,7 @@ export function InspectionEvidencesTab({
                         <Button
                             type="button"
                             variant="outline"
-                            className="w-full"
+                            className="w-full min-h-[44px] min-w-[44px]"
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <Paperclip className="h-4 w-4" />
@@ -269,8 +267,8 @@ export function InspectionEvidencesTab({
                             <div className="mt-3 overflow-hidden rounded-lg border bg-background">
                                 <img
                                     src={previewUrl}
-                                    alt={caption || file?.name || "Vista previa de evidencia"}
-                                    className="h-56 w-full object-cover"
+                                    alt={caption || file?.name || "Evidencia fotográfica técnica"}
+                                    className="h-52 w-full object-cover"
                                 />
                             </div>
                         ) : null}
@@ -290,6 +288,7 @@ export function InspectionEvidencesTab({
                                             size="sm"
                                             variant={isActive ? "default" : "outline"}
                                             onClick={() => setEvidenceCategory(category.value)}
+                                            className="min-h-[44px] min-w-[44px]"
                                         >
                                             {isActive ? <Check className="h-3.5 w-3.5" /> : null}
                                             {category.label}
@@ -389,11 +388,16 @@ export function InspectionEvidencesTab({
                                 variant="outline"
                                 onClick={resetForm}
                                 disabled={isUploading}
+                                className="min-h-[44px] min-w-[44px]"
                             >
                                 Limpiar
                             </Button>
 
-                            <Button type="submit" disabled={isUploading || !file}>
+                            <Button
+                                type="submit"
+                                disabled={isUploading || !file}
+                                className="min-h-[44px] min-w-[44px]"
+                            >
                                 {isUploading ? "Subiendo..." : "Registrar evidencia"}
                             </Button>
                         </div>
@@ -445,7 +449,7 @@ export function InspectionEvidencesTab({
                                     <div className="overflow-hidden rounded-lg border bg-muted/20">
                                         <img
                                             src={fileUrl}
-                                            alt={evidence.caption ?? `Evidencia ${evidence.id}`}
+                                            alt={evidence.accessible_alt_text || evidence.caption || "Evidencia fotográfica técnica"}
                                             className="h-52 w-full object-cover"
                                             loading="lazy"
                                         />
@@ -491,20 +495,9 @@ export function InspectionEvidencesTab({
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        onClick={() => onRunOcr(evidence.id)}
-                                        disabled={runningEvidenceId === evidence.id}
-                                    >
-                                        <ScanSearch className="h-4 w-4" />
-                                        {runningEvidenceId === evidence.id
-                                            ? "Procesando OCR..."
-                                            : "Ejecutar OCR"}
-                                    </Button>
-
-                                    <Button
-                                        type="button"
-                                        variant="outline"
                                         onClick={() => onExtract(evidence.id)}
                                         disabled={extractingEvidenceId === evidence.id}
+                                        className="min-h-[44px] min-w-[44px]"
                                     >
                                         <ScanSearch className="h-4 w-4" />
                                         {extractingEvidenceId === evidence.id
@@ -512,7 +505,7 @@ export function InspectionEvidencesTab({
                                             : "Extraer OCR"}
                                     </Button>
 
-                                    <Button asChild variant="ghost">
+                                    <Button asChild variant="ghost" className="min-h-[44px] min-w-[44px]">
                                         <a href={fileUrl} target="_blank" rel="noopener noreferrer">
                                             <ExternalLink className="h-4 w-4" />
                                             Abrir archivo

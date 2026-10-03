@@ -2,7 +2,9 @@ import { auth_storage } from "../lib/auth.storage"
 import type { CurrentUser, LoginInput, TokenResponse } from "../types/auth.types"
 
 const API_BASE_URL = (
-    import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1"
+    import.meta.env.VITE_API_BASE_URL ??
+    import.meta.env.VITE_API_URL ??
+    "http://127.0.0.1:8000/api/v1"
 ).replace(/\/$/, "")
 
 function as_string(value: unknown, fallback = ""): string {
@@ -23,6 +25,15 @@ function as_record(value: unknown): Record<string, unknown> | null {
         : null
 }
 
+function get_ngrok_header(): Record<string, string> {
+    const is_ngrok_url =
+        API_BASE_URL.includes(".ngrok-free.dev") ||
+        API_BASE_URL.includes(".ngrok.io") ||
+        API_BASE_URL.includes(".ngrok.app")
+
+    return is_ngrok_url ? { "ngrok-skip-browser-warning": "true" } : {}
+}
+
 function map_current_user(raw: unknown): CurrentUser {
     const data = as_record(raw)
 
@@ -35,14 +46,12 @@ function map_current_user(raw: unknown): CurrentUser {
     }
 }
 
-async function auth_request<T>(
-    path: string,
-    init?: RequestInit,
-): Promise<T> {
+async function auth_request<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${path}`, {
         ...init,
         headers: {
             "Content-Type": "application/json",
+            ...get_ngrok_header(),
             ...init?.headers,
         },
     })

@@ -23,6 +23,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 
+import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
+import { get_inspector_display_name } from "../types/inspections.utils"
+
 function InspectionsPageSkeleton() {
     return (
         <div className="space-y-4">
@@ -68,6 +71,7 @@ function EmptyState() {
 
 export default function InspectionsPage() {
     const { data = [], isLoading, isError, error } = useInspectionsQuery()
+    const { data: inspectors = [] } = useAdminUsersQuery()
     const [search, setSearch] = useState("")
 
     const filteredInspections = useMemo(() => {
@@ -81,7 +85,7 @@ export default function InspectionsPage() {
                 inspection.client_name,
                 inspection.equipment_type,
                 inspection.inspection_type,
-                inspection.responsible_inspector,
+                get_inspector_display_name(inspectors, inspection.responsible_inspector_id),
                 inspection.status,
             ]
                 .filter(Boolean)
@@ -160,35 +164,35 @@ export default function InspectionsPage() {
                         >
                             <Card className="border-border/60 shadow-sm transition-colors hover:bg-accent/30">
                                 <CardHeader className="space-y-3">
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        <div className="min-w-0 space-y-1">
-                                            <div className="flex items-center gap-3">
-                        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                          <ClipboardList className="h-4 w-4" />
-                        </span>
+                                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                <ClipboardList className="h-5 w-5" />
+                                            </span>
 
-                                                <div className="min-w-0">
-                                                    <h2 className="truncate text-base font-semibold">
-                                                        {inspection.code}
-                                                    </h2>
-                                                    <p className="truncate text-sm text-muted-foreground">
-                                                        {inspection.client_name}
-                                                    </p>
-                                                </div>
+                                            <div className="min-w-0">
+                                                <h2 className="truncate text-base font-semibold text-foreground">
+                                                    {inspection.code}
+                                                </h2>
+                                                <p className="truncate text-sm text-muted-foreground">
+                                                    {inspection.client_name}
+                                                </p>
                                             </div>
                                         </div>
 
-                                        <Badge variant={getInspectionStatusVariant(inspection.status)}>
-                                            {formatInspectionStatus(inspection.status)}
-                                        </Badge>
+                                        <div className="self-start sm:self-auto">
+                                            <Badge variant={getInspectionStatusVariant(inspection.status)}>
+                                                {formatInspectionStatus(inspection.status)}
+                                            </Badge>
+                                        </div>
                                     </div>
 
                                     <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                                         <div className="flex items-center gap-2">
                                             <Wrench className="h-4 w-4 shrink-0" />
                                             <span className="truncate">
-                        {inspection.equipment_type} · {inspection.inspection_type}
-                      </span>
+                                                {inspection.equipment_type} · {inspection.inspection_type}
+                                            </span>
                                         </div>
 
                                         <div className="flex items-center gap-2">
@@ -199,23 +203,23 @@ export default function InspectionsPage() {
                                         <div className="flex items-center gap-2">
                                             <MapPin className="h-4 w-4 shrink-0" />
                                             <span className="truncate">
-                        {inspection.location || "Ubicación no registrada"}
-                      </span>
+                                                {inspection.location || "Ubicación no registrada"}
+                                            </span>
                                         </div>
 
                                         <div className="flex items-center gap-2">
                                             <UserRound className="h-4 w-4 shrink-0" />
                                             <span className="truncate">
-                        {inspection.responsible_inspector || "Inspector no asignado"}
-                      </span>
+                                                {get_inspector_display_name(inspectors, inspection.responsible_inspector_id)}
+                                            </span>
                                         </div>
                                     </div>
                                 </CardHeader>
 
                                 <CardContent className="pt-0">
-                                    <div className="flex items-center justify-end text-sm font-medium text-primary">
-                                        <span>Ver detalle</span>
-                                        <ChevronRight className="ml-1 h-4 w-4" />
+                                    <div className="flex min-h-[44px] w-full items-center justify-between rounded-lg border border-border/80 bg-background/50 px-3.5 text-sm font-medium text-foreground transition-colors group-hover:bg-accent sm:inline-flex sm:w-auto sm:float-right">
+                                        <span>Ver detalle de inspección</span>
+                                        <ChevronRight className="ml-2 h-4 w-4 text-primary" />
                                     </div>
                                 </CardContent>
                             </Card>
