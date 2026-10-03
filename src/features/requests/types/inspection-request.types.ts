@@ -41,6 +41,8 @@ export type InspectionRequestCreateInput = {
     equipmentType: EquipmentType
     notes: string | null
     status?: InspectionRequestStatus
+    consent_accepted: boolean
+    consent_third_party: boolean
 }
 
 export type InspectionRequestFormValues = {
@@ -53,6 +55,8 @@ export type InspectionRequestFormValues = {
     serviceType: string
     equipmentType: string
     notes: string
+    consent_accepted: boolean
+    consent_third_party: boolean
 }
 
 export type InspectionRequestFormErrors = Partial<
@@ -69,6 +73,8 @@ export const inspectionRequestInitialValues: InspectionRequestFormValues = {
     serviceType: "",
     equipmentType: "",
     notes: "",
+    consent_accepted: false,
+    consent_third_party: false,
 }
 
 const email_pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -151,6 +157,11 @@ export function validateInspectionRequestForm(
         errors.notes = "Las notas contienen contenido no permitido."
     } else if (!has_valid_length(values.notes, 5000)) {
         errors.notes = "Las notas no pueden superar los 5000 caracteres."
+    }
+
+    if (!values.consent_accepted) {
+        errors.consent_accepted =
+            "Debes aceptar la Política de Privacidad conforme a la Ley N° 29733 para enviar la solicitud."
     }
 
     return errors
