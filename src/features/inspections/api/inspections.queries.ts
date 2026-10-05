@@ -27,6 +27,7 @@ import {
     startProductivity,
     finishProductivity,
     get_productivity_by_inspection,
+    transitionInspectionStatus,
 } from "./inspections.api"
 
 import { inspectionsKeys } from "./inspections.keys"
@@ -367,5 +368,31 @@ export function useProductivityByInspectionQuery(inspection_id: number) {
         queryFn: () => get_productivity_by_inspection(inspection_id),
         enabled: Number.isFinite(inspection_id) && inspection_id > 0,
         retry: false,
+    })
+}
+
+export function useTransitionInspectionStatusMutation(inspectionId: number) {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: (payload: { to_status: string; notes?: string }) =>
+            transitionInspectionStatus(inspectionId, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: inspectionsKeys.detail(inspectionId),
+            })
+            queryClient.invalidateQueries({
+                queryKey: inspectionsKeys.list(),
+            })
+            queryClient.invalidateQueries({
+                queryKey: inspectionsKeys.drafts(inspectionId),
+            })
+            queryClient.invalidateQueries({
+                queryKey: [...inspectionsKeys.all, "report-history"],
+            })
+            queryClient.invalidateQueries({
+                queryKey: [...inspectionsKeys.all, "report-status"],
+            })
+        },
     })
 }

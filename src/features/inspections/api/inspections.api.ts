@@ -610,3 +610,14 @@ export async function updateInspectionField(
     )
     return mapInspectionField(response)
 }
+
+export async function transitionInspectionStatus(
+    inspectionId: number,
+    payload: { to_status: string; notes?: string },
+): Promise<Inspection> {
+    const response = await apiPost<RawRecord>(
+        `/inspections/${inspectionId}/status-transition`,
+        payload,
+    )
+    return mapInspection(response)
+}
