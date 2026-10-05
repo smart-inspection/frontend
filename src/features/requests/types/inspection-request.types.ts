@@ -41,6 +41,8 @@ export type InspectionRequestCreateInput = {
     equipmentType: EquipmentType
     notes: string | null
     status?: InspectionRequestStatus
+    consent_accepted: boolean
+    consent_third_party: boolean
 }
 
 export type InspectionRequestFormValues = {
@@ -53,6 +55,8 @@ export type InspectionRequestFormValues = {
     serviceType: string
     equipmentType: string
     notes: string
+    consent_accepted: boolean
+    consent_third_party: boolean
 }
 
 export type InspectionRequestFormErrors = Partial<
@@ -69,6 +73,8 @@ export const inspectionRequestInitialValues: InspectionRequestFormValues = {
     serviceType: "",
     equipmentType: "",
     notes: "",
+    consent_accepted: false,
+    consent_third_party: false,
 }
 
 const email_pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -153,5 +159,93 @@ export function validateInspectionRequestForm(
         errors.notes = "Las notas no pueden superar los 5000 caracteres."
     }
 
+    if (!values.consent_accepted) {
+        errors.consent_accepted =
+            "Debes aceptar la Política de Privacidad conforme a la Ley N° 29733 para enviar la solicitud."
+    }
+
     return errors
 }
+
+export type ConversionFormValues = {
+    code: string
+    client_name: string
+    inspection_type: string
+    equipment_type: string
+    inspection_date: string
+    location: string
+    requested_by: string
+    responsible_inspector_id: string
+}
+
+export type ConversionFormErrors = Partial<Record<keyof ConversionFormValues, string>>
+
+export function buildInitialConversionValues(request: InspectionRequest): ConversionFormValues {
+    return {
+        code: "",
+        client_name: request.companyName,
+        inspection_type: request.serviceType ?? "Inspección técnica",
+        equipment_type: request.equipmentType ?? "",
+        inspection_date: request.requestedDate ?? "",
+        location: request.location,
+        requested_by: request.contactName,
+        responsible_inspector_id: "",
+    }
+}
+
+export function validateConversionForm(values: ConversionFormValues): ConversionFormErrors {
+    const errors: ConversionFormErrors = {}
+
+    if (!values.code.trim()) errors.code = "El código es obligatorio."
+    if (!values.client_name.trim()) errors.client_name = "El cliente es obligatorio."
+    if (!values.inspection_type.trim()) {
+        errors.inspection_type = "El tipo de inspección es obligatorio."
+    }
+    if (!values.equipment_type.trim()) {
+        errors.equipment_type = "El tipo de equipo es obligatorio."
+    }
+    if (!values.inspection_date.trim()) {
+        errors.inspection_date = "La fecha programada es obligatoria."
+    }
+    if (!values.responsible_inspector_id.trim()) {
+        errors.responsible_inspector_id = "El inspector responsable es obligatorio."
+    }
+
+    return errors
+}
+
+export function formatRequestDate(value?: string | null): string {
+    if (!value) return "Sin fecha"
+    try {
+        return new Intl.DateTimeFormat("es-PE", {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+        }).format(new Date(value))
+    } catch {
+        return value
+    }
+}
+
+export function getRequestStatusLabel(status: string): string {
+    switch (status) {
+        case "pending":
+            return "Pendiente"
+        case "converted":
+            return "Convertida"
+        default:
+            return status
+    }
+}
+
+export function getRequestStatusVariant(status: string): "outline" | "secondary" | "default" {
+    switch (status) {
+        case "pending":
+            return "outline"
+        case "converted":
+            return "secondary"
+        default:
+            return "outline"
+    }
+}
+

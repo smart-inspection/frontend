@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { CheckCircle2, Loader2, Send } from "lucide-react"
+import { CheckCircle2, Info, Loader2, Send } from "lucide-react"
 
 import {Badge} from "@/components/ui/badge"
 import {Button} from "@/components/ui/button"
@@ -10,6 +10,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
+import {Checkbox} from "@/components/ui/checkbox"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Textarea} from "@/components/ui/textarea"
@@ -49,6 +50,7 @@ export function PublicInspectionRequestForm() {
             values.location,
             values.serviceType,
             values.equipmentType,
+            values.consent_accepted ? "accepted" : "",
         ].filter((value) => value.trim().length > 0).length
     }, [values])
 
@@ -125,6 +127,8 @@ export function PublicInspectionRequestForm() {
                 equipmentType: values.equipmentType as EquipmentType,
                 notes: empty_to_null(values.notes),
                 status: "pending",
+                consent_accepted: values.consent_accepted,
+                consent_third_party: values.consent_third_party,
             })
 
             setSubmittedRequest(result)
@@ -168,7 +172,7 @@ export function PublicInspectionRequestForm() {
                     <div className="flex items-center justify-between gap-3">
                         <CardTitle className="text-base">Solicitar inspección</CardTitle>
                         <Badge variant="outline">
-                            {completed_required}/5 obligatorios
+                            {completed_required}/6 obligatorios
                         </Badge>
                     </div>
 
@@ -400,13 +404,87 @@ export function PublicInspectionRequestForm() {
                             ) : null}
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 border-t pt-4 md:col-span-2">
+                        <div className="space-y-3 rounded-lg border border-border/80 bg-muted/20 p-4 md:col-span-2">
+                            <div className="flex items-start gap-3">
+                                <Checkbox
+                                    id="consent_accepted"
+                                    checked={values.consent_accepted}
+                                    onCheckedChange={(checked) =>
+                                        update_field("consent_accepted", checked === true)
+                                    }
+                                    aria-invalid={Boolean(errors.consent_accepted)}
+                                    aria-describedby={
+                                        errors.consent_accepted ? "consent_accepted-error" : "consent-desc"
+                                    }
+                                    className="mt-0.5"
+                                />
+                                <div className="space-y-1 text-sm leading-snug">
+                                    <Label
+                                        htmlFor="consent_accepted"
+                                        className="font-medium text-foreground cursor-pointer"
+                                    >
+                                        Consentimiento informado de datos personales (Ley N° 29733) *
+                                    </Label>
+                                    <p id="consent-desc" className="text-xs text-muted-foreground">
+                                        Autorizo el tratamiento de mis datos personales para la atención y programación de esta inspección. Declaro conocer que puedo ejercer mis derechos ARCO (Acceso, Rectificación, Cancelación y Oposición).
+                                    </p>
+                                </div>
+                            </div>
+                            {errors.consent_accepted ? (
+                                <p id="consent_accepted-error" className="text-xs text-destructive pl-7">
+                                    {errors.consent_accepted}
+                                </p>
+                            ) : null}
+
+                            <div className="flex items-start gap-3 border-t border-border/60 pt-3">
+                                <Checkbox
+                                    id="consent_third_party"
+                                    checked={values.consent_third_party}
+                                    onCheckedChange={(checked) =>
+                                        update_field("consent_third_party", checked === true)
+                                    }
+                                    className="mt-0.5"
+                                />
+                                <div className="space-y-1 text-sm leading-snug">
+                                    <Label
+                                        htmlFor="consent_third_party"
+                                        className="font-normal text-muted-foreground cursor-pointer"
+                                    >
+                                        Declaración de representación: Cuento con la debida autorización y facultades para registrar datos en nombre del titular o empresa indicada. (Opcional)
+                                    </Label>
+                                </div>
+                            </div>
+
+                            <details className="mt-1 text-xs text-muted-foreground group">
+                                <summary className="cursor-pointer font-medium text-primary hover:underline inline-flex items-center gap-1.5 py-1">
+                                    <Info className="h-3.5 w-3.5" />
+                                    <span>Información legal sobre protección de datos y derechos ARCO</span>
+                                </summary>
+                                <div className="mt-2 space-y-2 rounded-md border border-border/60 bg-background p-3 text-xs leading-relaxed text-muted-foreground">
+                                    <p className="font-semibold text-foreground">
+                                        Marco Normativo - Ley N° 29733 (Perú):
+                                    </p>
+                                    <p>
+                                        Los datos personales recopilados mediante este formulario son incorporados en bancos de datos automatizados exclusivamente para fines de coordinación operativa, técnica y administrativa vinculados a las solicitudes de inspección.
+                                    </p>
+                                    <p>
+                                        <strong>Derechos ARCO:</strong> Como titular de los datos personales o representante autorizado, tienes derecho a solicitar el Acceso, Rectificación, Cancelación y Oposición del tratamiento de tu información mediante solicitud formal a los canales de contacto de nuestra entidad.
+                                    </p>
+                                </div>
+                            </details>
+                        </div>
+
+                        <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between md:col-span-2">
                             <p className="text-xs text-muted-foreground">
                                 Los campos marcados con * son obligatorios. La solicitud se
                                 registrará en estado pendiente.
                             </p>
 
-                            <Button type="submit" disabled={createMutation.isPending}>
+                            <Button
+                                type="submit"
+                                disabled={createMutation.isPending || !values.consent_accepted}
+                                className="min-h-[44px] w-full sm:w-auto"
+                            >
                                 {createMutation.isPending ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
