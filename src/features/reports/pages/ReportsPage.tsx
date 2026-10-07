@@ -1,10 +1,25 @@
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight, FileText, Search } from "lucide-react"
+import {
+    ArrowRight,
+    Download,
+    FileText,
+    History,
+    Loader2,
+    Search,
+} from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet"
 import {
     Table,
     TableBody,
@@ -13,33 +28,52 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
+
+import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
 import { useCurrentUserQuery } from "@/features/auth/api/auth.queries"
-import { useInspectionsQuery } from "@/features/inspections/api/inspections.queries"
-import { useInspectionDraftsQuery } from "@/features/inspections/api/inspections.queries"
+import { downloadReportFile } from "@/features/inspections/api/inspections.api"
+import {
+    useInspectionDraftsQuery,
+    useInspectionsQuery,
+} from "@/features/inspections/api/inspections.queries"
+import { InspectionSummaryTab } from "@/features/inspections/components/inspection-summary-tab"
+import type { Inspection, ReportDraft } from "@/features/inspections/types/inspections.types"
 import {
     formatInspectionDate,
     formatInspectionStatus,
     getInspectionStatusVariant,
+    get_inspector_display_name,
 } from "@/features/inspections/types/inspections.utils"
-import type { Inspection } from "@/features/inspections/types/inspections.types"
+import { formatDateTime } from "@/features/inspections/utils/inspection-detail.utils"
 
-import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
-import { get_inspector_display_name } from "@/features/inspections/types/inspections.utils"
+const STATUS_FILTERS = [
+    { value: "", label: "Todos" },
+    { value: "draft", label: "Borrador" },
+    { value: "in_review", label: "En revisión" },
+    { value: "observed", label: "Observado" },
+    { value: "approved", label: "Aprobado" },
+    { value: "finalized", label: "Finalizado" },
+]
 
 function InspectionReportCard({
     inspection,
     inspectors,
+    onOpenTraceability,
+    downloadingKey,
+    onDownload,
 }: {
     inspection: Inspection
     inspectors: { id: number; full_name: string }[]
+    onOpenTraceability: (inspection: Inspection, draft: ReportDraft | null) => void
+    downloadingKey: string | null
+    onDownload: (inspectionId: number, draftId: number | null, format: "pdf" | "docx") => void
 }) {
     const drafts_query = useInspectionDraftsQuery(inspection.id)
     const drafts = drafts_query.data ?? []
+    const latest_draft = drafts.at(-1) ?? null
 
-    const latest_draft = drafts.at(-1)
-    const report_status = latest_draft?.status ?? null
-    const draft_count = drafts.length
+    const isPdfDownloading = downloadingKey === `${inspection.id}-pdf`
+    const isDocxDownloading = downloadingKey === `${inspection.id}-docx`
 
     return (
         <Card className="border-border/60 shadow-sm">
@@ -57,25 +91,14 @@ function InspectionReportCard({
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        <Badge variant={getInspectionStatusVariant(inspection.status)}>
-                            {formatInspectionStatus(inspection.status)}
-                        </Badge>
-                        {report_status ? (
-                            <Badge variant={getInspectionStatusVariant(report_status)}>
-                                {formatInspectionStatus(report_status)}
-                            </Badge>
-                        ) : (
-                            <Badge variant="outline" className="text-xs text-muted-foreground">
-                                Sin informe
-                            </Badge>
-                        )}
-                    </div>
+                    <Badge variant={getInspectionStatusVariant(inspection.status)}>
+                        {formatInspectionStatus(inspection.status)}
+                    </Badge>
                 </div>
             </CardHeader>
 
             <CardContent className="space-y-3 pt-0 text-sm">
-                <div className="grid gap-2 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
+                <div className="grid gap-1.5 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
                     <div className="flex items-center justify-between">
                         <span className="font-medium text-foreground">Inspector:</span>
                         <span className="truncate max-w-[60%] text-right">
@@ -84,44 +107,94 @@ function InspectionReportCard({
                     </div>
 
                     <div className="flex items-center justify-between">
-                        <span className="font-medium text-foreground">Fecha inspección:</span>
+                        <span className="font-medium text-foreground">Fecha:</span>
                         <span>{formatInspectionDate(inspection.inspection_date)}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
-                        <span className="font-medium text-foreground">Borradores generados:</span>
-                        <span>{draft_count > 0 ? draft_count : "0"}</span>
+                        <span className="font-medium text-foreground">Última modificación:</span>
+                        <span>{formatDateTime(inspection.updated_at)}</span>
                     </div>
                 </div>
 
-                <Button asChild variant="outline" className="min-h-[44px] w-full">
-                    <Link to={`/inspections/${inspection.id}`}>
-                        <span>Ver detalle e informe</span>
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDownload(inspection.id, latest_draft?.id ?? null, "pdf")}
+                        disabled={isPdfDownloading || !latest_draft}
+                        className="min-h-[44px] flex-1 text-xs"
+                    >
+                        {isPdfDownloading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <Download className="h-3.5 w-3.5" />
+                        )}
+                        PDF
+                    </Button>
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDownload(inspection.id, latest_draft?.id ?? null, "docx")}
+                        disabled={isDocxDownloading || !latest_draft}
+                        className="min-h-[44px] flex-1 text-xs"
+                    >
+                        {isDocxDownloading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <Download className="h-3.5 w-3.5" />
+                        )}
+                        DOCX
+                    </Button>
+
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => onOpenTraceability(inspection, latest_draft)}
+                        className="min-h-[44px] flex-1 text-xs"
+                    >
+                        <History className="h-3.5 w-3.5" />
+                        Estado
+                    </Button>
+
+                    <Button asChild variant="ghost" size="sm" className="min-h-[44px]">
+                        <Link to={`/inspections/${inspection.id}`}>
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     )
 }
 
 function InspectionReportRow({
-                                 inspection,
-                                 inspectors,
-                             }: {
+    inspection,
+    inspectors,
+    onOpenTraceability,
+    downloadingKey,
+    onDownload,
+}: {
     inspection: Inspection
     inspectors: { id: number; full_name: string }[]
+    onOpenTraceability: (inspection: Inspection, draft: ReportDraft | null) => void
+    downloadingKey: string | null
+    onDownload: (inspectionId: number, draftId: number | null, format: "pdf" | "docx") => void
 }) {
     const drafts_query = useInspectionDraftsQuery(inspection.id)
     const drafts = drafts_query.data ?? []
+    const latest_draft = drafts.at(-1) ?? null
 
-    const latest_draft = drafts.at(-1)
-    const report_status = latest_draft?.status ?? null
-    const draft_count = drafts.length
+    const isPdfDownloading = downloadingKey === `${inspection.id}-pdf`
+    const isDocxDownloading = downloadingKey === `${inspection.id}-docx`
 
     return (
         <TableRow>
-            <TableCell className="font-medium">
+            <TableCell className="font-medium whitespace-nowrap">
                 <Link
                     to={`/inspections/${inspection.id}`}
                     className="hover:underline hover:text-primary"
@@ -129,38 +202,77 @@ function InspectionReportRow({
                     {inspection.code}
                 </Link>
             </TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="text-muted-foreground whitespace-nowrap">
                 {inspection.client_name}
             </TableCell>
-            <TableCell className="hidden sm:table-cell text-muted-foreground">
+            <TableCell className="hidden sm:table-cell text-muted-foreground whitespace-nowrap">
                 {get_inspector_display_name(inspectors, inspection.responsible_inspector_id)}
             </TableCell>
-            <TableCell className="hidden md:table-cell text-muted-foreground">
+            <TableCell className="hidden md:table-cell text-muted-foreground whitespace-nowrap">
                 {formatInspectionDate(inspection.inspection_date)}
             </TableCell>
-            <TableCell>
+            <TableCell className="whitespace-nowrap">
                 <Badge variant={getInspectionStatusVariant(inspection.status)}>
                     {formatInspectionStatus(inspection.status)}
                 </Badge>
             </TableCell>
-            <TableCell>
-                {report_status ? (
-                    <Badge variant={getInspectionStatusVariant(report_status)}>
-                        {formatInspectionStatus(report_status)}
-                    </Badge>
-                ) : (
-                    <span className="text-xs text-muted-foreground">Sin informe</span>
-                )}
-            </TableCell>
-            <TableCell className="hidden lg:table-cell text-center text-sm">
-                {draft_count > 0 ? draft_count : "—"}
+            <TableCell className="hidden lg:table-cell text-muted-foreground whitespace-nowrap">
+                {formatDateTime(inspection.updated_at)}
             </TableCell>
             <TableCell className="text-right">
-                <Button asChild variant="ghost" size="sm" className="min-h-[44px] min-w-[44px]">
-                    <Link to={`/inspections/${inspection.id}`}>
-                        <ArrowRight className="h-4 w-4" />
-                    </Link>
-                </Button>
+                <div className="flex items-center justify-end gap-1.5">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDownload(inspection.id, latest_draft?.id ?? null, "pdf")}
+                        disabled={isPdfDownloading || !latest_draft}
+                        className="min-h-[44px] min-w-[44px] px-2.5 text-xs"
+                        title={latest_draft ? "Descargar informe PDF" : "Sin borrador generado"}
+                    >
+                        {isPdfDownloading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Download className="h-4 w-4" />
+                        )}
+                        <span className="hidden xl:inline ml-1">PDF</span>
+                    </Button>
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDownload(inspection.id, latest_draft?.id ?? null, "docx")}
+                        disabled={isDocxDownloading || !latest_draft}
+                        className="min-h-[44px] min-w-[44px] px-2.5 text-xs"
+                        title={latest_draft ? "Descargar informe DOCX" : "Sin borrador generado"}
+                    >
+                        {isDocxDownloading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Download className="h-4 w-4" />
+                        )}
+                        <span className="hidden xl:inline ml-1">DOCX</span>
+                    </Button>
+
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => onOpenTraceability(inspection, latest_draft)}
+                        className="min-h-[44px] min-w-[44px] px-2.5 text-xs"
+                        title="Ver trazabilidad y cambiar estado"
+                    >
+                        <History className="h-4 w-4" />
+                        <span className="hidden xl:inline ml-1">Trazabilidad</span>
+                    </Button>
+
+                    <Button asChild variant="ghost" size="sm" className="min-h-[44px] min-w-[44px]">
+                        <Link to={`/inspections/${inspection.id}`} title="Ver detalle de inspección">
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </Button>
+                </div>
             </TableCell>
         </TableRow>
     )
@@ -173,18 +285,20 @@ export function ReportsPage() {
 
     const [search, set_search] = useState("")
     const [status_filter, set_status_filter] = useState("")
+    const [downloadingKey, setDownloadingKey] = useState<string | null>(null)
+    const [selectedInspection, setSelectedInspection] = useState<{
+        inspection: Inspection
+        draft: ReportDraft | null
+    } | null>(null)
 
     const is_inspector = current_user?.role === "inspector"
 
     const filtered = useMemo(() => {
         let result = inspections
 
-        if (is_inspector && current_user?.full_name) {
+        if (is_inspector && current_user?.id) {
             result = result.filter(
-                (i) =>
-                    get_inspector_display_name(inspectors, i.responsible_inspector_id)
-                        .toLowerCase()
-                        .includes(current_user.full_name.toLowerCase()),
+                (i) => i.responsible_inspector_id === current_user.id,
             )
         }
 
@@ -207,15 +321,31 @@ export function ReportsPage() {
         }
 
         return result
-    }, [inspections, is_inspector, current_user, search, status_filter])
+    }, [inspections, is_inspector, current_user, search, status_filter, inspectors])
 
-    const STATUS_OPTIONS = [
-        { value: "", label: "Todos los estados" },
-        { value: "draft", label: "Borrador" },
-        { value: "in_review", label: "En revisión" },
-        { value: "observed", label: "Observado" },
-        { value: "finalized", label: "Finalizado" },
-    ]
+    const handleDownload = async (
+        inspectionId: number,
+        draftId: number | null,
+        format: "pdf" | "docx",
+    ) => {
+        const key = `${inspectionId}-${format}`
+        try {
+            setDownloadingKey(key)
+            const targetId = draftId ?? inspectionId
+            await downloadReportFile(targetId, format)
+        } finally {
+            setDownloadingKey(null)
+        }
+    }
+
+    const handleOpenTraceability = (inspection: Inspection, draft: ReportDraft | null) => {
+        setSelectedInspection({ inspection, draft })
+    }
+
+    const can_edit =
+        current_user?.role === "admin" ||
+        (current_user?.role === "inspector" &&
+            selectedInspection?.inspection.responsible_inspector_id === current_user?.id)
 
     return (
         <section className="space-y-5">
@@ -226,46 +356,57 @@ export function ReportsPage() {
                 </h1>
                 <p className="text-sm text-muted-foreground">
                     {is_inspector
-                        ? "Informes de tus inspecciones asignadas con su estado actual."
-                        : "Listado global de inspecciones con estado del informe y trazabilidad de cambios."}
+                        ? "Centro de control operativo de tus informes asignados con trazabilidad y descarga directa."
+                        : "Panel integral de gestión de estados, trazabilidad operativa y descarga autenticada de informes."}
                 </p>
             </div>
 
             <Card className="border-border/60 shadow-sm">
-                <CardContent className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            className="pl-9"
-                            placeholder="Buscar por código, cliente o inspector…"
-                            value={search}
-                            onChange={(e) => set_search(e.target.value)}
-                        />
+                <CardContent className="space-y-3 pt-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                className="pl-9 min-h-[44px]"
+                                placeholder="Buscar por código, cliente o inspector…"
+                                value={search}
+                                onChange={(e) => set_search(e.target.value)}
+                            />
+                        </div>
                     </div>
 
-                    <select
-                        value={status_filter}
-                        onChange={(e) => set_status_filter(e.target.value)}
-                        className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-52"
-                    >
-                        {STATUS_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                            </option>
-                        ))}
-                    </select>
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-xs font-medium text-muted-foreground mr-1">
+                            Estado:
+                        </span>
+                        {STATUS_FILTERS.map((opt) => {
+                            const is_active = status_filter === opt.value
+                            return (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => set_status_filter(opt.value)}
+                                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px] ${
+                                        is_active
+                                            ? "border border-primary bg-primary text-primary-foreground"
+                                            : "border border-border/80 bg-background text-muted-foreground hover:bg-muted"
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            )
+                        })}
+                    </div>
                 </CardContent>
             </Card>
 
             <Card className="border-border/60 shadow-sm">
                 <CardHeader>
                     <CardTitle className="text-base">
-                        {filtered.length} inspección
-                        {filtered.length !== 1 ? "es" : ""}
+                        {filtered.length} inspección{filtered.length !== 1 ? "es" : ""}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {/* Vista móvil: tarjetas verticales (< md) */}
                     <div className="flex flex-col gap-3 md:hidden">
                         {isLoading ? (
                             <div className="py-8 text-center text-sm text-muted-foreground">
@@ -285,12 +426,14 @@ export function ReportsPage() {
                                     key={inspection.id}
                                     inspection={inspection}
                                     inspectors={inspectors}
+                                    onOpenTraceability={handleOpenTraceability}
+                                    downloadingKey={downloadingKey}
+                                    onDownload={handleDownload}
                                 />
                             ))
                         )}
                     </div>
 
-                    {/* Vista escritorio / tablet: tabla tradicional con scroll horizontal (>= md) */}
                     <div className="hidden md:block w-full overflow-x-auto rounded-lg border">
                         <Table>
                             <TableHeader>
@@ -299,19 +442,16 @@ export function ReportsPage() {
                                     <TableHead>Cliente</TableHead>
                                     <TableHead className="hidden sm:table-cell">Inspector</TableHead>
                                     <TableHead className="hidden md:table-cell">Fecha</TableHead>
-                                    <TableHead>Estado inspección</TableHead>
-                                    <TableHead>Estado informe</TableHead>
-                                    <TableHead className="hidden lg:table-cell text-center">
-                                        Borradores
-                                    </TableHead>
-                                    <TableHead className="text-right" />
+                                    <TableHead>Estado actual</TableHead>
+                                    <TableHead className="hidden lg:table-cell">Última modificación</TableHead>
+                                    <TableHead className="text-right">Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow>
                                         <TableCell
-                                            colSpan={8}
+                                            colSpan={7}
                                             className="py-8 text-center text-sm text-muted-foreground"
                                         >
                                             Cargando informes…
@@ -320,7 +460,7 @@ export function ReportsPage() {
                                 ) : isError ? (
                                     <TableRow>
                                         <TableCell
-                                            colSpan={8}
+                                            colSpan={7}
                                             className="py-8 text-center text-sm text-destructive"
                                         >
                                             No se pudo cargar el listado de informes.
@@ -329,7 +469,7 @@ export function ReportsPage() {
                                 ) : filtered.length === 0 ? (
                                     <TableRow>
                                         <TableCell
-                                            colSpan={8}
+                                            colSpan={7}
                                             className="py-8 text-center text-sm text-muted-foreground"
                                         >
                                             No hay inspecciones que coincidan con los filtros.
@@ -341,6 +481,9 @@ export function ReportsPage() {
                                             key={inspection.id}
                                             inspection={inspection}
                                             inspectors={inspectors}
+                                            onOpenTraceability={handleOpenTraceability}
+                                            downloadingKey={downloadingKey}
+                                            onDownload={handleDownload}
                                         />
                                     ))
                                 )}
@@ -349,6 +492,36 @@ export function ReportsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <Sheet
+                open={!!selectedInspection}
+                onOpenChange={(open) => !open && setSelectedInspection(null)}
+            >
+                <SheetContent
+                    side="right"
+                    className="w-full sm:max-w-xl overflow-y-auto p-4 sm:p-6"
+                >
+                    <SheetHeader className="space-y-1 mb-4">
+                        <SheetTitle className="text-lg">
+                            Trazabilidad y Estado: {selectedInspection?.inspection.code}
+                        </SheetTitle>
+                        <SheetDescription>
+                            {selectedInspection?.inspection.client_name} — {selectedInspection?.inspection.equipment_type}
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    {selectedInspection && (
+                        <div className="space-y-4">
+                            <InspectionSummaryTab
+                                inspection={selectedInspection.inspection}
+                                selectedDraft={selectedInspection.draft}
+                                canEdit={can_edit}
+                                currentRole={current_user?.role}
+                            />
+                        </div>
+                    )}
+                </SheetContent>
+            </Sheet>
         </section>
     )
 }

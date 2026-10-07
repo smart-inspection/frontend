@@ -1,4 +1,5 @@
 import {
+    apiClient,
     apiGet,
     apiPatch,
     apiPost,
@@ -368,7 +369,7 @@ export async function getInspectionById(inspectionId: number): Promise<Inspectio
 }
 
 export async function createInspection(payload: InspectionCreateInput): Promise<Inspection> {
-    const response = await apiPost<RawRecord>("inspections", {
+    const response = await apiPost<RawRecord>("/inspections", {
         status: "draft",
         ...payload,
     })
@@ -620,4 +621,28 @@ export async function transitionInspectionStatus(
         payload,
     )
     return mapInspection(response)
+}
+
+export async function downloadReportFile(
+    inspectionId: number | string,
+    format: "pdf" | "docx",
+    filename?: string,
+): Promise<void> {
+    const response = await apiClient.get<Blob>(
+        `/report-export/${format}/${inspectionId}`,
+        { responseType: "blob" },
+    )
+    const mime =
+        format === "pdf"
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    const blob = new Blob([response.data], { type: mime })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename || `inspeccion_${inspectionId}_reporte.${format}`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
 }

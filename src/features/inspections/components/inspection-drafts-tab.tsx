@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
-import { Bot, Download, FileText, Save, Sparkles } from "lucide-react"
+import { Bot, Download, FileText, Loader2, Save, Sparkles } from "lucide-react"
 
-import { getExportDocxUrl, getExportPdfUrl } from "@/features/inspections/api/inspections.api"
+import { downloadReportFile } from "@/features/inspections/api/inspections.api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,6 +48,17 @@ export function InspectionDraftsTab({
     const [templateVersion, setTemplateVersion] = useState("v1")
     const [llmTemplateVersion, setLlmTemplateVersion] = useState("llama3-v1")
     const [editedTexts, setEditedTexts] = useState<Record<number, string>>({})
+    const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+    const handleDownload = async (draftId: number, format: "pdf" | "docx") => {
+        const key = `${draftId}-${format}`
+        try {
+            setDownloadingId(key)
+            await downloadReportFile(draftId, format)
+        } finally {
+            setDownloadingId(null)
+        }
+    }
 
     useEffect(() => {
         const nextState = Object.fromEntries(
@@ -218,26 +229,34 @@ export function InspectionDraftsTab({
                                             : "Guardar edición"}
                                     </Button>
 
-                                    <Button asChild variant="outline">
-                                        <a
-                                            href={getExportPdfUrl(draft.id)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => handleDownload(draft.id, "pdf")}
+                                        disabled={downloadingId === `${draft.id}-pdf`}
+                                        className="min-h-[44px]"
+                                    >
+                                        {downloadingId === `${draft.id}-pdf` ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
                                             <Download className="h-4 w-4" />
-                                            Exportar PDF
-                                        </a>
+                                        )}
+                                        Exportar PDF
                                     </Button>
 
-                                    <Button asChild variant="outline">
-                                        <a
-                                            href={getExportDocxUrl(draft.id)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => handleDownload(draft.id, "docx")}
+                                        disabled={downloadingId === `${draft.id}-docx`}
+                                        className="min-h-[44px]"
+                                    >
+                                        {downloadingId === `${draft.id}-docx` ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
                                             <Download className="h-4 w-4" />
-                                            Exportar DOCX
-                                        </a>
+                                        )}
+                                        Exportar DOCX
                                     </Button>
                                 </div>
                             </CardContent>
