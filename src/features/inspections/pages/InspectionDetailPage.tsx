@@ -11,10 +11,12 @@ import {
     useInspectionFieldsQuery,
     useInspectionTranscriptionsQuery,
 } from "@/features/inspections/api/inspections.queries"
+import { useCurrentUserQuery } from "@/features/auth/api/auth.queries"
 import { InspectionDetailHeader } from "../components/inspection-detail-header"
 import { InspectionDetailSkeleton } from "../components/inspection-detail-skeleton"
 import { InspectionDetailTabs } from "../components/inspection-detail-tabs"
 import { InspectionReportOperationCard } from "../components/inspection-report-operation-card"
+import { InspectionStatusManager } from "../components/inspection-status-manager"
 import { useInspectionActions } from "../hooks/useInspectionActions"
 import { useReportTimer } from "../hooks/useReportTimer"
 
@@ -25,11 +27,14 @@ export default function InspectionDetailPage() {
 
     const isInvalidInspectionId = !Number.isFinite(inspectionId) || inspectionId <= 0
 
+    const currentUserQuery = useCurrentUserQuery()
     const inspectionQuery = useInspectionDetailQuery(inspectionId)
     const fieldsQuery = useInspectionFieldsQuery(inspectionId)
     const evidencesQuery = useInspectionEvidencesQuery(inspectionId)
     const transcriptionsQuery = useInspectionTranscriptionsQuery(inspectionId)
     const draftsQuery = useInspectionDraftsQuery(inspectionId)
+
+    const current_user = currentUserQuery.data
 
     const fields = fieldsQuery.data ?? []
     const evidences = evidencesQuery.data ?? []
@@ -93,6 +98,10 @@ export default function InspectionDetailPage() {
     const inspection = inspectionQuery.data
     const observedFields = fields.filter((f) => f.validation_status === "mismatch").length
 
+    const can_edit =
+        current_user?.role === "admin" ||
+        (current_user?.role === "inspector" && inspection.responsible_inspector_id === current_user?.id)
+
     return (
         <section className="space-y-5">
             <InspectionDetailHeader
@@ -104,6 +113,14 @@ export default function InspectionDetailPage() {
                 observedFieldsCount={observedFields}
             />
 
+            {!can_edit && (
+                <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="flex items-center gap-2 py-3 text-sm text-amber-800">
+                        <span className="font-semibold">Modo de solo lectura:</span> Esta inspección está asignada a otro inspector o no posees permisos de edición sobre ella.
+                    </CardContent>
+                </Card>
+            )}
+
             <InspectionReportOperationCard
                 selectedDraft={selectedDraft}
                 visualReportStatus={timer.visualReportStatus}
@@ -111,12 +128,19 @@ export default function InspectionDetailPage() {
                 reportDurationMinutes={timer.reportDurationMinutes}
                 liveElapsedLabel={timer.liveElapsedLabel}
                 isOverGoal={timer.isOverGoal}
-                canStartReport={timer.canStartReport}
-                canFinishReport={timer.canFinishReport}
+                canStartReport={timer.canStartReport && can_edit}
+                canFinishReport={timer.canFinishReport && can_edit}
                 isStartingReport={timer.isStartingReport}
                 isFinishingReport={timer.isFinishingReport}
                 onStartReport={timer.handleStartReport}
                 onFinishReport={timer.handleFinishReport}
+            />
+
+            <InspectionStatusManager
+                inspection={inspection}
+                canEdit={can_edit}
+                currentRole={current_user?.role}
+                draftId={selectedDraft?.id}
             />
 
             <InspectionDetailTabs

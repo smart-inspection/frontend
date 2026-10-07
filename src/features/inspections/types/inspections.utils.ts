@@ -11,9 +11,13 @@ export function formatInspectionStatus(status: string) {
         case "edited":
             return "Editado"
         case "in_review":
-            return "Informe en proceso"
+            return "En revisión"
         case "observed":
             return "Observado"
+        case "approved":
+            return "Aprobado"
+        case "rejected":
+            return "Rechazado"
         case "finalized":
             return "Finalizado"
         default:
@@ -35,6 +39,10 @@ export function getInspectionStatusVariant(status: string) {
         case "in_review":
             return "secondary"
         case "observed":
+            return "destructive"
+        case "approved":
+            return "default"
+        case "rejected":
             return "destructive"
         case "finalized":
             return "default"
