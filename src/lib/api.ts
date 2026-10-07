@@ -1,9 +1,29 @@
+import axios from "axios"
 import { auth_storage } from "@/features/auth/lib/auth.storage"
 
 const RAW_API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1"
 
 export const API_BASE_URL = RAW_API_BASE_URL.replace(/\/$/, "")
+
+export const apiClient = axios.create({
+    baseURL: API_BASE_URL,
+})
+
+apiClient.interceptors.request.use((config) => {
+    const token = auth_storage.get_token()
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+    }
+    const is_ngrok_url =
+        API_BASE_URL.includes(".ngrok-free.dev") ||
+        API_BASE_URL.includes(".ngrok.io") ||
+        API_BASE_URL.includes(".ngrok.app")
+    if (is_ngrok_url) {
+        config.headers["ngrok-skip-browser-warning"] = "true"
+    }
+    return config
+})
 
 function get_auth_header(): Record<string, string> {
     const token = auth_storage.get_token()
@@ -22,7 +42,8 @@ function get_ngrok_header(): Record<string, string> {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const is_form_data = init?.body instanceof FormData
 
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const normalized_path = path.startsWith("/") ? path : `/${path}`
+    const response = await fetch(`${API_BASE_URL}${normalized_path}`, {
         ...init,
         headers: {
             ...(is_form_data ? {} : { "Content-Type": "application/json" }),

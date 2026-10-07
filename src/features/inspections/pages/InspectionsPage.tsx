@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { useAdminUsersQuery } from "@/features/admin/api/admin.queries"
+import { useCurrentUserQuery } from "@/features/auth/api/auth.queries"
 import { get_inspector_display_name } from "../types/inspections.utils"
 
 function InspectionsPageSkeleton() {
@@ -61,7 +62,7 @@ function EmptyState() {
                 <div className="space-y-1">
                     <h3 className="text-base font-semibold">No hay inspecciones registradas</h3>
                     <p className="text-sm text-muted-foreground">
-                        Cuando el backend tenga inspecciones creadas, aparecerán aquí.
+                        Cuando existan inspecciones registradas en el sistema, aparecerán aquí.
                     </p>
                 </div>
             </CardContent>
@@ -70,16 +71,26 @@ function EmptyState() {
 }
 
 export default function InspectionsPage() {
+    const { data: current_user } = useCurrentUserQuery()
     const { data = [], isLoading, isError, error } = useInspectionsQuery()
     const { data: inspectors = [] } = useAdminUsersQuery()
     const [search, setSearch] = useState("")
 
+    const visibleInspections = useMemo(() => {
+        if (current_user?.role === "inspector" && current_user?.id) {
+            return data.filter(
+                (inspection) => inspection.responsible_inspector_id === current_user.id,
+            )
+        }
+        return data
+    }, [data, current_user])
+
     const filteredInspections = useMemo(() => {
         const term = search.trim().toLowerCase()
 
-        if (!term) return data
+        if (!term) return visibleInspections
 
-        return data.filter((inspection) =>
+        return visibleInspections.filter((inspection) =>
             [
                 inspection.code,
                 inspection.client_name,
@@ -91,7 +102,7 @@ export default function InspectionsPage() {
                 .filter(Boolean)
                 .some((value) => String(value).toLowerCase().includes(term)),
         )
-    }, [data, search])
+    }, [visibleInspections, search, inspectors])
 
     return (
         <section className="space-y-5">
@@ -127,7 +138,7 @@ export default function InspectionsPage() {
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                        <span className="rounded-full bg-muted px-2.5 py-1">Total: {data.length}</span>
+                        <span className="rounded-full bg-muted px-2.5 py-1">Total: {visibleInspections.length}</span>
                         <span className="rounded-full bg-muted px-2.5 py-1">
               Mostrando: {filteredInspections.length}
             </span>

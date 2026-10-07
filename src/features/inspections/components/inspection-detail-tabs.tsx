@@ -1,7 +1,7 @@
 import {
-    ClipboardList,
     FileText,
     FolderOpen,
+    History,
     Languages,
     ScanSearch,
     ShieldCheck,
@@ -88,10 +88,10 @@ export function InspectionDetailTabs({
                     <FileText className="h-4 w-4" /> <span>Borradores/Informes</span>
                 </TabsTrigger>
                 <TabsTrigger
-                    value="summary"
+                    value="status"
                     className="min-h-[44px] shrink-0 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                    <ClipboardList className="h-4 w-4" /> <span>Resumen</span>
+                    <History className="h-4 w-4" /> <span>Gestión de Estados</span>
                 </TabsTrigger>
             </TabsList>
 
@@ -172,13 +172,10 @@ export function InspectionDetailTabs({
                 />
             </TabsContent>
 
-            <TabsContent value="summary" className="space-y-4">
+            <TabsContent value="status" className="space-y-4">
                 <InspectionSummaryTab
                     inspection={inspection}
-                    fields={fields}
-                    evidences={evidences}
-                    transcriptions={transcriptions}
-                    drafts={drafts}
+                    selectedDraft={selectedDraft}
                 />
             </TabsContent>
         </Tabs>
